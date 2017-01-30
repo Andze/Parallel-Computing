@@ -73,14 +73,20 @@ int main(int argc, char **argv) {
 
 		//5.1 Copy arrays A and B to device memory
 		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, vector_size, &A[0]);
-		queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, vector_size, &B[0]);
+		queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, vector_size, &B[0]);
+
 		//5.2 Setup and execute the kernel (i.e. device code)
 		cl::Kernel kernel_add = cl::Kernel(program, "add");
 		kernel_add.setArg(0, buffer_A);
 		kernel_add.setArg(1, buffer_B);
-		kernel_add.setArg(2, buffer_C);		cl::Kernel kernel_mult = cl::Kernel(program, "mult");		kernel_mult.setArg(0, buffer_A);
+		kernel_add.setArg(2, buffer_C);
+
+		cl::Kernel kernel_mult = cl::Kernel(program, "mult");
+		kernel_mult.setArg(0, buffer_A);
 		kernel_mult.setArg(1, buffer_B);
-		kernel_mult.setArg(2, buffer_C);		queue.enqueueNDRangeKernel(kernel_mult, cl::NullRange,cl::NDRange(vector_elements), cl::NullRange, NULL, &prof_event);
+		kernel_mult.setArg(2, buffer_C);
+
+		queue.enqueueNDRangeKernel(kernel_mult, cl::NullRange,cl::NDRange(vector_elements), cl::NullRange, NULL, &prof_event);
 
 		//queue.enqueueNDRangeKernel(kernel_add, cl::NullRange, cl::NDRange(vector_elements), cl::NullRange, NULL, &prof_event);
 
@@ -91,7 +97,9 @@ int main(int argc, char **argv) {
 		cout << "B = " << B << endl;
 		cout << "C = " << C << endl;
 
-		std::cout << "Kernel execution time [ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_NS) << endl;
+		std::cout << "Kernel execution time [ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_NS) << endl;
+
 	}
 	catch (cl::Error err) {
 		cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << endl;
