@@ -55,14 +55,14 @@ int main(int argc, char **argv) {
 
 		//Part 4 - memory allocation
 		//host - input
-		vector<int> A = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }; //C++11 allows this type of initialisation
-		vector<int> B = { 0, 1, 2, 0, 1, 2, 0, 1, 2, 0 };
+		vector<float> A = { 1.5, 0.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0 }; //C++11 allows this type of initialisation
+		vector<float> B = { 10.0, 1.0, 2.0, 0.0, 1.0, 2.0, 0.0, 1.0, 2.0, 0.0 };
 		
 		size_t vector_elements = A.size();//number of elements
-		size_t vector_size = A.size()*sizeof(int);//size in bytes
+		size_t vector_size = A.size()*sizeof(float);//size in bytes
 
 		//host - output
-		vector<int> C(vector_elements);
+		vector<float> C(vector_elements);
 
 		//device - buffers
 		cl::Buffer buffer_A(context, CL_MEM_READ_WRITE, vector_size);
@@ -86,9 +86,25 @@ int main(int argc, char **argv) {
 		kernel_mult.setArg(1, buffer_B);
 		kernel_mult.setArg(2, buffer_C);
 
-		queue.enqueueNDRangeKernel(kernel_mult, cl::NullRange,cl::NDRange(vector_elements), cl::NullRange, NULL, &prof_event);
+		cl::Kernel kernel_multF = cl::Kernel(program, "multF");
+		kernel_multF.setArg(0, buffer_A);
+		kernel_multF.setArg(1, buffer_B);
+		kernel_multF.setArg(2, buffer_C);
 
-		//queue.enqueueNDRangeKernel(kernel_add, cl::NullRange, cl::NDRange(vector_elements), cl::NullRange, NULL, &prof_event);
+
+		cl::Kernel kernel_addF = cl::Kernel(program, "addF");
+		kernel_addF.setArg(0, buffer_A);
+		kernel_addF.setArg(1, buffer_B);
+		kernel_addF.setArg(2, buffer_C);
+
+		//int addition
+		queue.enqueueNDRangeKernel(kernel_mult, cl::NullRange,cl::NDRange(vector_elements), cl::NullRange, NULL, &prof_event);
+		//int multiply
+		queue.enqueueNDRangeKernel(kernel_add, cl::NullRange, cl::NDRange(vector_elements), cl::NullRange, NULL, &prof_event);
+
+		//Float additon and multi
+		queue.enqueueNDRangeKernel(kernel_multF, cl::NullRange, cl::NDRange(vector_elements), cl::NullRange, NULL, &prof_event);
+		queue.enqueueNDRangeKernel(kernel_addF, cl::NullRange, cl::NDRange(vector_elements), cl::NullRange, NULL, &prof_event);
 
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, vector_size, &C[0]);
