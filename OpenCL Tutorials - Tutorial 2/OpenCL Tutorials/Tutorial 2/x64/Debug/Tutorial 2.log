@@ -1,0 +1,8 @@
+﻿  Tutorial 2.cpp
+  lodepng.cpp
+Graphics\lodepng\lodepng.cpp(3441): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+  Generating Code...
+  Tutorial 2.vcxproj -> C:\Users\Computing\Documents\GitHub\Parallel-Computing\OpenCL Tutorials - Tutorial 2\OpenCL Tutorials\x64\Debug\Tutorial 2.exe
+  Tutorial 2.vcxproj -> C:\Users\Computing\Documents\GitHub\Parallel-Computing\OpenCL Tutorials - Tutorial 2\OpenCL Tutorials\x64\Debug\Tutorial 2.pdb (Full PDB)
+  my_kernels2.cl
+          1 file(s) copied.
