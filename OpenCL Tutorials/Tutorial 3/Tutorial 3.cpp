@@ -68,12 +68,12 @@ int main(int argc, char **argv) {
 
 		//Part 4 - memory allocation
 		//host - input
-		std::vector<mytype> A(10, 1);//allocate 10 elements with an initial value 1 - their sum is 10 so it should be easy to check the results!
+		std::vector<mytype> A(128, 1);//allocate 10 elements with an initial value 1 - their sum is 10 so it should be easy to check the results!
 
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
 		//if the total input length is divisible by the workgroup size
 		//this makes the code more efficient
-		size_t local_size = 10;
+		size_t local_size = 128;
 
 		size_t padding_size = A.size() % local_size;
 
@@ -97,7 +97,8 @@ int main(int argc, char **argv) {
 		//device - buffers
 		cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);
 		cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, output_size);
-				cl::Event prof_event;
+		
+		cl::Event prof_event;
 
 
 		//Part 5 - device operations
@@ -107,10 +108,10 @@ int main(int argc, char **argv) {
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);//zero B buffer on device memory
 
 		//5.2 Setup and execute all kernels (i.e. device code)
-		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_1");
+		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
-		//kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
+		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
 
 		//call all kernels in a sequence
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size),NULL, &prof_event);
@@ -119,7 +120,7 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
 		std::cout << "A = " << A << std::endl;
-		std::cout << "B = " << B << std::endl;
+		std::cout << "B = " << B[0] << std::endl;
 		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
 		std::cout << "Kernel execution time[ns]:"<< prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
 	}
