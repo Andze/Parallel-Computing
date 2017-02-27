@@ -43,7 +43,8 @@ int main(int argc, char **argv) {
 		std::cout << "Runinng on " << GetPlatformName(platform_id) << ", " << GetDeviceName(platform_id, device_id) << std::endl;
 
 		//create a queue to which we will push commands for the device
-		cl::CommandQueue queue(context);
+		//cl::CommandQueue queue(context);
+		cl::CommandQueue queue(context, CL_QUEUE_PROFILING_ENABLE);
 
 		//2.2 Load & build the device code
 		cl::Program::Sources sources;
@@ -96,6 +97,8 @@ int main(int argc, char **argv) {
 		//device - buffers
 		cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);
 		cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, output_size);
+				cl::Event prof_event;
+
 
 		//Part 5 - device operations
 
@@ -107,16 +110,18 @@ int main(int argc, char **argv) {
 		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_1");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
-//		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
+		//kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
 
 		//call all kernels in a sequence
-		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size));
+		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size),NULL, &prof_event);
 
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
 		std::cout << "A = " << A << std::endl;
 		std::cout << "B = " << B << std::endl;
+		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
+		std::cout << "Kernel execution time[ns]:"<< prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
 	}
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;
@@ -124,3 +129,14 @@ int main(int argc, char **argv) {
 
 	return 0;
 }
+
+/*
+	Times (NS)
+	
+	Reduce 1:6944,6528,6752:	7 Executed
+	Reduce 2:8992,9472,9280:	8 Executed
+	Reduce 3:7040,6848,6784:	6 Executed
+
+
+
+*/
