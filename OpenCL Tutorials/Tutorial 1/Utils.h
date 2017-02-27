@@ -5,7 +5,11 @@
 #include <iostream>
 #include <sstream>
 
+#ifdef __APPLE__
+#include <OpenCL/cl.hpp>
+#else
 #include <CL/cl.hpp>
+#endif
 
 using namespace std;
 
@@ -118,7 +122,8 @@ void CheckError(cl_int error) {
 
 void AddSources(cl::Program::Sources& sources, const string& file_name) {
 	//TODO: add file existence check
-	string* source_code = new string(istreambuf_iterator<char>(ifstream(file_name)), (istreambuf_iterator<char>()));
+	ifstream file(file_name);
+	string* source_code = new string(istreambuf_iterator<char>(file), (istreambuf_iterator<char>()));
 	sources.push_back(make_pair((*source_code).c_str(), source_code->length() + 1));
 }
 

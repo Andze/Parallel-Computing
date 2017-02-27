@@ -4,18 +4,21 @@
 #include <iostream>
 #include <vector>
 
+#ifdef __APPLE__
+#include <OpenCL/cl.hpp>
+#else
 #include <CL/cl.hpp>
+#endif
+
 #include "Utils.h"
 
-using namespace std;
-
 void print_help() {
-	cerr << "Application usage:" << endl;
+	std::cerr << "Application usage:" << std::endl;
 
-	cerr << "  -p : select platform " << endl;
-	cerr << "  -d : select device" << endl;
-	cerr << "  -l : list all platforms and devices" << endl;
-	cerr << "  -h : print this message" << endl;
+	std::cerr << "  -p : select platform " << std::endl;
+	std::cerr << "  -d : select device" << std::endl;
+	std::cerr << "  -l : list all platforms and devices" << std::endl;
+	std::cerr << "  -h : print this message" << std::endl;
 }
 
 int main(int argc, char **argv) {
@@ -26,7 +29,7 @@ int main(int argc, char **argv) {
 	for (int i = 1; i < argc; i++)	{
 		if ((strcmp(argv[i], "-p") == 0) && (i < (argc - 1))) { platform_id = atoi(argv[++i]); }
 		else if ((strcmp(argv[i], "-d") == 0) && (i < (argc - 1))) { device_id = atoi(argv[++i]); }
-		else if (strcmp(argv[i], "-l") == 0) { cout << ListPlatformsDevices() << endl; }
+		else if (strcmp(argv[i], "-l") == 0) { std::cout << ListPlatformsDevices() << std::endl; }
 		else if (strcmp(argv[i], "-h") == 0) { print_help(); }
 	}
 
@@ -37,10 +40,10 @@ int main(int argc, char **argv) {
 		cl::Context context = GetContext(platform_id, device_id);
 
 		//display the selected device
-		cout << "Runinng on " << GetPlatformName(platform_id) << ", " << GetDeviceName(platform_id, device_id) << endl;
+		std::cout << "Runinng on " << GetPlatformName(platform_id) << ", " << GetDeviceName(platform_id, device_id) << std::endl;
 
 		//create a queue to which we will push commands for the device
-		cl::CommandQueue queue(context, CL_QUEUE_PROFILING_ENABLE);
+		cl::CommandQueue queue(context);
 
 		//2.2 Load & build the device code
 		cl::Program::Sources sources;
@@ -49,20 +52,27 @@ int main(int argc, char **argv) {
 
 		cl::Program program(context, sources);
 
-		cl::Event prof_event;
-
-		program.build();
+		//build and debug the kernel code
+		try {
+			program.build();
+		}
+		catch (const cl::Error& err) {
+			std::cout << "Build Status: " << program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
+			std::cout << "Build Options:\t" << program.getBuildInfo<CL_PROGRAM_BUILD_OPTIONS>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
+			std::cout << "Build Log:\t " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(context.getInfo<CL_CONTEXT_DEVICES>()[0]) << std::endl;
+			throw err;
+		}
 
 		//Part 4 - memory allocation
 		//host - input
-		vector<float> A = { 1.5, 0.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0 }; //C++11 allows this type of initialisation
-		vector<float> B = { 10.0, 1.0, 2.0, 0.0, 1.0, 2.0, 0.0, 1.0, 2.0, 0.0 };
+		std::vector<int> A = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }; //C++11 allows this type of initialisation
+		std::vector<int> B = { 0, 1, 2, 0, 1, 2, 0, 1, 2, 0 };
 		
 		size_t vector_elements = A.size();//number of elements
-		size_t vector_size = A.size()*sizeof(float);//size in bytes
+		size_t vector_size = A.size()*sizeof(int);//size in bytes
 
 		//host - output
-		vector<float> C(vector_elements);
+		std::vector<int> C(vector_elements);
 
 		//device - buffers
 		cl::Buffer buffer_A(context, CL_MEM_READ_WRITE, vector_size);
@@ -81,44 +91,17 @@ int main(int argc, char **argv) {
 		kernel_add.setArg(1, buffer_B);
 		kernel_add.setArg(2, buffer_C);
 
-		cl::Kernel kernel_mult = cl::Kernel(program, "mult");
-		kernel_mult.setArg(0, buffer_A);
-		kernel_mult.setArg(1, buffer_B);
-		kernel_mult.setArg(2, buffer_C);
-
-		cl::Kernel kernel_multF = cl::Kernel(program, "multF");
-		kernel_multF.setArg(0, buffer_A);
-		kernel_multF.setArg(1, buffer_B);
-		kernel_multF.setArg(2, buffer_C);
-
-
-		cl::Kernel kernel_addF = cl::Kernel(program, "addF");
-		kernel_addF.setArg(0, buffer_A);
-		kernel_addF.setArg(1, buffer_B);
-		kernel_addF.setArg(2, buffer_C);
-
-		//int addition
-		queue.enqueueNDRangeKernel(kernel_mult, cl::NullRange,cl::NDRange(vector_elements), cl::NullRange, NULL, &prof_event);
-		//int multiply
-		queue.enqueueNDRangeKernel(kernel_add, cl::NullRange, cl::NDRange(vector_elements), cl::NullRange, NULL, &prof_event);
-
-		//Float additon and multi
-		queue.enqueueNDRangeKernel(kernel_multF, cl::NullRange, cl::NDRange(vector_elements), cl::NullRange, NULL, &prof_event);
-		queue.enqueueNDRangeKernel(kernel_addF, cl::NullRange, cl::NDRange(vector_elements), cl::NullRange, NULL, &prof_event);
+		queue.enqueueNDRangeKernel(kernel_add, cl::NullRange, cl::NDRange(vector_elements), cl::NullRange);
 
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, vector_size, &C[0]);
 
-		cout << "A = " << A << endl;
-		cout << "B = " << B << endl;
-		cout << "C = " << C << endl;
-
-		std::cout << "Kernel execution time [ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
-		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_NS) << endl;
-
+		std::cout << "A = " << A << std::endl;
+		std::cout << "B = " << B << std::endl;
+		std::cout << "C = " << C << std::endl;
 	}
 	catch (cl::Error err) {
-		cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << endl;
+		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;
 	}
 
 	return 0;
