@@ -31,6 +31,41 @@ __kernel void avg_filter2D(__global const uchar4* A, __global uchar4* B) {
 	B[id] = convert_uchar4(result); //convert back to uchar4 
 }
 
+//Filter_R
+__kernel void filter_r (__global const uchar4* A, __global uchar4* B) {
+	int id = get_global_id(0);
+
+	A[id].z = 255;
+	A[id].x = 255;
+
+	//copy result
+	B[id] = A[id];
+}
+
+//Invert colours RGB
+__kernel void Invert (__global const uchar4* A, __global uchar4* B) {
+	int id = get_global_id(0);
+
+	A[id].x = (255 - A[id].x);
+	A[id].y = (255 - A[id].y);
+	A[id].z = (255 - A[id].z);
+
+	//copy result
+	B[id] = A[id];
+}
+
+//Grey Scale
+__kernel void rgb2grey (__global const uchar4* A, __global uchar4* B) {
+	int id = get_global_id(0);
+
+	A[id].x = (0.2989 * A[id].x + 0.5870 * A[id].y + 0.1140 * A[id].z);
+	A[id].y = (0.2989 * A[id].x + 0.5870 * A[id].y + 0.1140 * A[id].z);
+	A[id].z = (0.2989 * A[id].x + 0.5870 * A[id].y + 0.1140 * A[id].z);
+
+	//copy result
+	B[id] = A[id];
+}
+
 //2D 3x3 convolution kernel
 __kernel void convolution2D(__global const uchar4* A, __global uchar4* B, __constant float* mask) {
 	int x = get_global_id(0);
