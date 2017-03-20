@@ -21,6 +21,21 @@ void print_help() {
 	std::cerr << "  -h : print this message" << std::endl;
 }
 
+float* read(const char* dir, int size)
+{
+	float* tmp = new float[size];
+
+	FILE* stream = fopen(dir, "r");
+	fseek(stream, 0L, SEEK_SET);
+
+	for (int i = 0; i < size; i++)
+		fscanf(stream, "%*s %*lf %*lf %*lf %*lf %f", &tmp[i]);
+
+	fclose(stream);
+
+	return tmp;
+}
+
 int main(int argc, char **argv) {
 	//Part 1 - handle command line options such as device selection, verbosity, etc.
 	int platform_id = 0;
@@ -52,6 +67,21 @@ int main(int argc, char **argv) {
 		AddSources(sources, "my_kernels3.cl");
 
 		cl::Program program(context, sources);
+
+
+		//Read files
+
+		int size = 1873106;
+		float* Temprature = read("../temp_lincolnshire.txt", size);
+
+
+		for (int i = 0; i < 100; i++)
+		{
+			cout << Temprature[i] << endl;
+		}
+
+
+
 
 		//build and debug the kernel code
 		try {
@@ -137,7 +167,5 @@ int main(int argc, char **argv) {
 	Reduce 1:6944,6528,6752:	7 Executed
 	Reduce 2:8992,9472,9280:	8 Executed
 	Reduce 3:7040,6848,6784:	6 Executed
-
-
 
 */
