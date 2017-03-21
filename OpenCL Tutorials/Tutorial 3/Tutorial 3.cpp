@@ -27,7 +27,7 @@ float* read(const char* dir, int size)
 
 	FILE* stream = fopen(dir, "r");
 	fseek(stream, 0L, SEEK_SET);
-
+	
 	for (int i = 0; i < size; i++)
 		fscanf(stream, "%*s %*lf %*lf %*lf %*lf %f", &tmp[i]);
 
@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
 		float* Temprature = read("../temp_lincolnshire.txt", size);
 
 
-		for (int i = 0; i < 100; i++)
+		for (int i = 0; i < 500; i++)
 		{
 			cout << Temprature[i] << endl;
 		}
