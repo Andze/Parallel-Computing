@@ -1,0 +1,13 @@
+﻿  Tutorial 2.cpp
+c:\users\computing\documents\github\parallel-computing\opencl tutorials\tutorial 2\ImageIO.h(6): fatal error C1083: Cannot open include file: 'lodepng.h': No such file or directory
+  lodepng.cpp
+Graphics\lodepng\lodepng.cpp(762): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+Graphics\lodepng\lodepng.cpp(1422): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
+Graphics\lodepng\lodepng.cpp(1426): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
+Graphics\lodepng\lodepng.cpp(1498): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+Graphics\lodepng\lodepng.cpp(3441): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+Graphics\lodepng\lodepng.cpp(3455): warning C4267: 'argument': conversion from 'size_t' to 'unsigned int', possible loss of data
+Graphics\lodepng\lodepng.cpp(4262): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+Graphics\lodepng\lodepng.cpp(4310): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+Graphics\lodepng\lodepng.cpp(4390): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+Graphics\lodepng\lodepng.cpp(5329): warning C4267: 'initializing': conversion from 'size_t' to 'unsigned int', possible loss of data

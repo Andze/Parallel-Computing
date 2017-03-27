@@ -3,11 +3,11 @@ Tutorial 3.cpp(28): warning C4996: 'fopen': This function or variable may be uns
   C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(205): note: see declaration of 'fopen'
 Tutorial 3.cpp(32): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(1193): note: see declaration of 'fscanf'
-Tutorial 3.cpp(102): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+Tutorial 3.cpp(103): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
   Generating code
-  6 of 693 functions ( 0.9%) were compiled, the rest were copied from previous compilation.
-    4 functions were new in current compilation
-    21 functions had inline decision re-evaluated but remain unchanged
+  2 of 689 functions ( 0.3%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
   Tutorial 3.vcxproj -> C:\Users\Computing\Documents\GitHub\Parallel-Computing\OpenCL Tutorials\x64\Release\Tutorial 3.exe
   Tutorial 3.vcxproj -> C:\Users\Computing\Documents\GitHub\Parallel-Computing\OpenCL Tutorials\x64\Release\Tutorial 3.pdb (Full PDB)

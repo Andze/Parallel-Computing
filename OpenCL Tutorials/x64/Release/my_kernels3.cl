@@ -157,53 +157,103 @@ __kernel void scan_add_adjust(__global int* A, __global const int* B) {
 	A[id] += B[gid];
 }
 
+
+
+///REDUCE METHOD
+__kernel void Minimum(__global int* A, __global int* B) 
+{
+	int id = get_global_id(0); 
+	int N = get_global_size(0);
+
+	B[id] = A[id];
+
+	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+
+	for (int i = 1; i < N; i++ ) 
+	{
+		if(A[id+i] > B[id])
+			B[id] = A[id+i];
+	}
+	atomic_max(&B[0], A[id]);
+}
+
+/*
 void cmpxchg(__global int* A, __global int* B, bool dir) 
 {
-	if ((!dir && *A > *B) || (dir && *A < *B)) 
-	{
+	if ((!dir && *A > *B) || (dir && *A < *B)) 	{
 		int t = *A;
 		*A = *B;
 		*B = t;
 	}
 }
 
-
+///BITONIC SORT SORT---------------------------------------------------------------------
 void bitonic_merge(int id, __global int* A, int N, bool dir) 
 {
-	for (int i = N/2; i > 0; i/=2) 
+	for (int i = N/2; i > 0; i/=2)
 	{
 		if ((id % (i*2)) < i)
+		{ 
 			cmpxchg(&A[id],&A[id+i],dir);
+		}
 
 		barrier(CLK_GLOBAL_MEM_FENCE);
 	}
 }
 
-
-__kernel void ParallelSelection(__global const int* A, __global int* B, __local int * Scratch)
+__kernel void ParallelSelection(__global const int* A)
 {
   int id = get_global_id(0); // current thread
   int N = get_global_size(0); // input size
 
-  Scratch[lid] = A[id];
-
-  for (int i = 1; i < N/2; i*=2) 
+  for (int i = 1; i < N/2; i*=2)
   {
 		if (id % (i*4) < i*2)
-		{ 
-			bitonic_merge(id, Scratch, i*2, false);
+		{    
+			bitonic_merge(id, A, i*2, false);
 		}
 		else if ((id + i*2) % (i*4) < i*2)
-		{
-			bitonic_merge(id, Scratch, i*2, true);
+		{ 
+		bitonic_merge(id, A, i*2, true);
 		}
-
 		barrier(CLK_GLOBAL_MEM_FENCE);
 	}
-	bitonic_merge(id,Scratch,N,false);
-
-	B[id] = Scratch[lid];
+	bitonic_merge(id,A,N,false);
 }
+
+
+///ODD EVEN SORT---------------------------------------------------------------------
+void OddEvenSort(__global int* A, __global int* B)
+{
+	if (*A > *B) 
+		int t = *A; *A = *B; *B = t;
+}
+
+__kernel void sort_oddeven(__global int* A, __global int* B) 
+{
+	int id = get_global_id(0); 
+	int N = get_global_size(0);
+	int lid = get_local_id(0);
+
+	//Scratch[lid] = A[id];
+
+	for (int i = 0; i < N; i+=2) 
+	{//step
+		if (id%2 == 1 && id+1 < N) //odd
+		{
+			OddEvenSort(&A[id],&A[id+1]);
+		}
+		barrier(CLK_GLOBAL_MEM_FENCE);
+		if (id%2 == 0 && id+1 < N) //even
+		{ 
+			OddEvenSort(&A[id],&A[id+1]);
+		}
+	}
+	B[id] = A[id];
+}
+*/
+
+
 
 
 

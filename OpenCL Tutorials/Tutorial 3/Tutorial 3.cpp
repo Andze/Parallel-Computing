@@ -71,9 +71,8 @@ int main(int argc, char **argv) {
 
 		//Read files
 
-		int const size = 337;
-		//1873106
-		float* Temprature = read("../temp.txt", size);
+		int const size = 1873106;
+		float* Temprature = read("../temp_lincolnshire.txt", size);
 
 
 		for (int i = 0; i < 100; i++)
@@ -143,10 +142,10 @@ int main(int argc, char **argv) {
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);//zero B buffer on device memory
 
 		//5.2 Setup and execute all kernels (i.e. device code)
-		cl::Kernel kernel_1 = cl::Kernel(program, "ParallelSelection");
+		cl::Kernel kernel_1 = cl::Kernel(program, "Minimum");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
-		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
+		//kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
 
 		//call all kernels in a sequence
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size),NULL, &prof_event);
@@ -154,7 +153,7 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
-		std::cout << "A = " << A[0] << std::endl;
+		//std::cout << "A = " << A << std::endl;
 		std::cout << "B = " << B[0] << std::endl;
 		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
 		std::cout << "Kernel execution time[ns]:"<< prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
