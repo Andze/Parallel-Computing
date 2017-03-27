@@ -81,8 +81,6 @@ int main(int argc, char **argv) {
 		}
 
 
-
-
 		//build and debug the kernel code
 		try {
 			program.build();
