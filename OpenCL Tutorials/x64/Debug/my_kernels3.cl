@@ -165,7 +165,9 @@ void cmpxchg(__global int* A, __global int* B, bool dir)
 		*A = *B;
 		*B = t;
 	}
-}
+}
+
+
 void bitonic_merge(int id, __global int* A, int N, bool dir) 
 {
 	for (int i = N/2; i > 0; i/=2) 
@@ -175,7 +177,9 @@ void bitonic_merge(int id, __global int* A, int N, bool dir)
 
 		barrier(CLK_GLOBAL_MEM_FENCE);
 	}
-}
+}
+
+
 
 __kernel void ParallelSelection(__global const int* A)
 {
@@ -198,4 +202,5 @@ __kernel void ParallelSelection(__global const int* A)
 	bitonic_merge(id,A,N,false);
 }
 
-
+
+

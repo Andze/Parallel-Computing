@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
 		float* Temprature = read("../temp_lincolnshire.txt", size);
 
 
-		for (int i = 0; i < 500; i++)
+		for (int i = 0; i < 100; i++)
 		{
 			cout << Temprature[i] << endl;
 		}
@@ -96,12 +96,13 @@ int main(int argc, char **argv) {
 
 		//Part 4 - memory allocation
 		//host - input
-		std::vector<mytype> A[size];//(Temprature, Temprature + sizeof Temprature / sizeof Temprature[0]);//allocate 10 elements with an initial value 1 - their sum is 10 so it should be easy to check the results!
-		//convert into vector of ints
+		std::vector<mytype> A(size);	// (temp, temp + sizeof(temp) / sizeof(temp[0]));
 		for (int i = 0; i < size; i++)
 		{
-			A[i] = static_cast<int>(Temprature[i])
+			A[i] = Temprature[i];
 		}
+		//convert into vector of ints
+	
 		
 
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
