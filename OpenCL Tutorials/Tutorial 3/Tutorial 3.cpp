@@ -71,8 +71,9 @@ int main(int argc, char **argv) {
 
 		//Read files
 
-		int const size = 1873106;
-		float* Temprature = read("../temp_lincolnshire.txt", size);
+		int const size = 337;
+		//1873106
+		float* Temprature = read("../temp.txt", size);
 
 
 		for (int i = 0; i < 100; i++)
@@ -96,7 +97,7 @@ int main(int argc, char **argv) {
 
 		//Part 4 - memory allocation
 		//host - input
-		std::vector<mytype> A(size);	// (temp, temp + sizeof(temp) / sizeof(temp[0]));
+		std::vector<mytype> A(size);
 		for (int i = 0; i < size; i++)
 		{
 			A[i] = Temprature[i];
