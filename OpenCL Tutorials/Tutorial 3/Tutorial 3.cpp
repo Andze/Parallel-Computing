@@ -135,7 +135,6 @@ int main(int argc, char **argv) {
 		
 		cl::Event prof_event;
 
-
 		//Part 5 - device operations
 
 		//5.1 copy array A to and initialise other arrays on device memory
@@ -145,9 +144,8 @@ int main(int argc, char **argv) {
 		//5.2 Setup and execute all kernels (i.e. device code)
 		cl::Kernel kernel_1 = cl::Kernel(program, "ParallelSelection");
 		kernel_1.setArg(0, buffer_A);
-		//kernel_1.setArg(1, buffer_B);
-		
-		//kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
+		kernel_1.setArg(1, buffer_B);
+		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
 
 		//call all kernels in a sequence
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size),NULL, &prof_event);
@@ -164,6 +162,7 @@ int main(int argc, char **argv) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;
 	}
 
+	system("Pause");
 	return 0;
 }
 

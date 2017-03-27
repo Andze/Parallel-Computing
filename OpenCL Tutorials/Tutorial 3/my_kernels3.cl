@@ -157,7 +157,7 @@ __kernel void scan_add_adjust(__global int* A, __global const int* B) {
 	A[id] += B[gid];
 }
 
-void cmpxchg(__global int* A, __global int* B, bool dir) 
+void cmpxchg(__local int* A, __local int* B, bool dir) 
 {
 	if ((!dir && *A > *B) || (dir && *A < *B)) 
 	{
@@ -168,7 +168,7 @@ void cmpxchg(__global int* A, __global int* B, bool dir)
 }
 
 
-void bitonic_merge(int id, __global int* A, int N, bool dir) 
+void bitonic_merge(int id, __local int* A, int N, bool dir) 
 {
 	for (int i = N/2; i > 0; i/=2) 
 	{
@@ -180,26 +180,30 @@ void bitonic_merge(int id, __global int* A, int N, bool dir)
 }
 
 
-
-__kernel void ParallelSelection(__global const int* A)
+__kernel void ParallelSelection(__global const int* A, __global int* B, __local int * Scratch)
 {
   int id = get_global_id(0); // current thread
+  int lid = get_local_id(0);
   int N = get_global_size(0); // input size
+
+  Scratch[lid] = A[id];
 
   for (int i = 1; i < N/2; i*=2) 
   {
 		if (id % (i*4) < i*2)
 		{ 
-			bitonic_merge(id, A, i*2, false);
+			bitonic_merge(id, Scratch, i*2, false);
 		}
 		else if ((id + i*2) % (i*4) < i*2)
 		{
-			bitonic_merge(id, A, i*2, true);
+			bitonic_merge(id, Scratch, i*2, true);
 		}
 
 		barrier(CLK_GLOBAL_MEM_FENCE);
 	}
-	bitonic_merge(id,A,N,false);
+	bitonic_merge(id,Scratch,N,false);
+
+	B[id] = Scratch[lid];
 }
 
 

@@ -157,25 +157,53 @@ __kernel void scan_add_adjust(__global int* A, __global const int* B) {
 	A[id] += B[gid];
 }
 
-void OddEvenSort(__global int* A, __global int* B) 
+void cmpxchg(__global int* A, __global int* B, bool dir) 
 {
-	if (*A > *B) 
+	if ((!dir && *A > *B) || (dir && *A < *B)) 
 	{
-		int t = *A; *A = *B; *B = t;
+		int t = *A;
+		*A = *B;
+		*B = t;
 	}
 }
-__kernel void sort_oddeven(__global int* A) {
 
-	int id = get_global_id(0); int N = get_global_size(0);
 
-	for (int i = 0; i < N; i+=2) 
-	{//step
-		if (id%2 == 1 && id+1 < N) //odd
-			OddEvenSort(&A[id],&A[id+1]);
+void bitonic_merge(int id, __global int* A, int N, bool dir) 
+{
+	for (int i = N/2; i > 0; i/=2) 
+	{
+		if ((id % (i*2)) < i)
+			cmpxchg(&A[id],&A[id+i],dir);
 
 		barrier(CLK_GLOBAL_MEM_FENCE);
-
-		if (id%2 == 0 && id+1 < N) //even
-			OddEvenSort(&A[id],&A[id+1]);
 	}
 }
+
+
+__kernel void ParallelSelection(__global const int* A, __global int* B, __local int * Scratch)
+{
+  int id = get_global_id(0); // current thread
+  int N = get_global_size(0); // input size
+
+  Scratch[lid] = A[id];
+
+  for (int i = 1; i < N/2; i*=2) 
+  {
+		if (id % (i*4) < i*2)
+		{ 
+			bitonic_merge(id, Scratch, i*2, false);
+		}
+		else if ((id + i*2) % (i*4) < i*2)
+		{
+			bitonic_merge(id, Scratch, i*2, true);
+		}
+
+		barrier(CLK_GLOBAL_MEM_FENCE);
+	}
+	bitonic_merge(id,Scratch,N,false);
+
+	B[id] = Scratch[lid];
+}
+
+
+
