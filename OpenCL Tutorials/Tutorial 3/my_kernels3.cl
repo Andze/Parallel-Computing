@@ -160,7 +160,7 @@ __kernel void scan_add_adjust(__global int* A, __global const int* B) {
 
 
 ///REDUCE METHOD
-__kernel void Minimum(__global int* A, __global int* B) 
+__kernel void Maximum(__global int* A, __global int* B) 
 {
 	int id = get_global_id(0); 
 	int N = get_global_size(0);
@@ -175,6 +175,24 @@ __kernel void Minimum(__global int* A, __global int* B)
 			B[id] = A[id+i];
 	}
 	atomic_max(&B[0], A[id]);
+}
+
+///REDUCE METHOD
+__kernel void Minimum(__global int* A, __global int* B) 
+{
+	int id = get_global_id(0); 
+	int N = get_global_size(0);
+
+	B[id] = A[id];
+
+	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+
+	for (int i = 1; i < N; i++ ) 
+	{
+		if(A[id+i] < B[id])
+			B[id] = A[id+i];
+	}
+	atomic_min(&B[0], A[id]);
 }
 
 /*
