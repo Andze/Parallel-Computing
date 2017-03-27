@@ -156,3 +156,26 @@ __kernel void scan_add_adjust(__global int* A, __global const int* B) {
 	int gid = get_group_id(0);
 	A[id] += B[gid];
 }
+
+void OddEvenSort(__global int* A, __global int* B) 
+{
+	if (*A > *B) 
+	{
+		int t = *A; *A = *B; *B = t;
+	}
+}
+__kernel void sort_oddeven(__global int* A) {
+
+	int id = get_global_id(0); int N = get_global_size(0);
+
+	for (int i = 0; i < N; i+=2) 
+	{//step
+		if (id%2 == 1 && id+1 < N) //odd
+			OddEvenSort(&A[id],&A[id+1]);
+
+		barrier(CLK_GLOBAL_MEM_FENCE);
+
+		if (id%2 == 0 && id+1 < N) //even
+			OddEvenSort(&A[id],&A[id+1]);
+	}
+}

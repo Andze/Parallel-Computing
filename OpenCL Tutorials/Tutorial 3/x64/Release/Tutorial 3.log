@@ -8,7 +8,7 @@ Tutorial 3.cpp(32): warning C4996: 'fscanf': This function or variable may be un
     5 functions were new in current compilation
     0 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
-  Tutorial 3.vcxproj -> C:\Users\Andy\Documents\GitHub\Parallel-Computing\OpenCL Tutorials\x64\Release\Tutorial 3.exe
-  Tutorial 3.vcxproj -> C:\Users\Andy\Documents\GitHub\Parallel-Computing\OpenCL Tutorials\x64\Release\Tutorial 3.pdb (Full PDB)
+  Tutorial 3.vcxproj -> C:\Users\Computing\Documents\GitHub\Parallel-Computing\OpenCL Tutorials\x64\Release\Tutorial 3.exe
+  Tutorial 3.vcxproj -> C:\Users\Computing\Documents\GitHub\Parallel-Computing\OpenCL Tutorials\x64\Release\Tutorial 3.pdb (Full PDB)
   my_kernels3.cl
           1 file(s) copied.
