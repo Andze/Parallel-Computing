@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
 
 		//Read files
 
-		int size = 1873106;
+		int const size = 1873106;
 		float* Temprature = read("../temp_lincolnshire.txt", size);
 
 
@@ -96,17 +96,23 @@ int main(int argc, char **argv) {
 
 		//Part 4 - memory allocation
 		//host - input
-		std::vector<mytype> A(12, 1);//allocate 10 elements with an initial value 1 - their sum is 10 so it should be easy to check the results!
+		std::vector<mytype> A[size];//(Temprature, Temprature + sizeof Temprature / sizeof Temprature[0]);//allocate 10 elements with an initial value 1 - their sum is 10 so it should be easy to check the results!
+		//convert into vector of ints
+		for (int i = 0; i < size; i++)
+		{
+			A[i] = static_cast<int>(Temprature[i])
+		}
+		
 
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
 		//if the total input length is divisible by the workgroup size
 		//this makes the code more efficient
-		size_t local_size = 12;
+		size_t local_size = 32;
 
 		size_t padding_size = A.size() % local_size;
 
-		//if the input vector is not a multiple of the local_size
-		//insert additional neutral elements (0 for addition) so that the total will not be affected
+		////if the input vector is not a multiple of the local_size
+		////insert additional neutral elements (0 for addition) so that the total will not be affected
 		if (padding_size) {
 			//create an extra vector with neutral values
 			std::vector<int> A_ext(local_size-padding_size, 0);
@@ -115,7 +121,7 @@ int main(int argc, char **argv) {
 		}
 
 		size_t input_elements = A.size();//number of input elements
-		size_t input_size = A.size()*sizeof(mytype);//size in bytes
+		size_t input_size = A.size() *sizeof(mytype);//size in bytes
 		size_t nr_groups = input_elements / local_size;
 
 		//host - output
@@ -136,10 +142,11 @@ int main(int argc, char **argv) {
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);//zero B buffer on device memory
 
 		//5.2 Setup and execute all kernels (i.e. device code)
-		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
+		cl::Kernel kernel_1 = cl::Kernel(program, "ParallelSelection");
 		kernel_1.setArg(0, buffer_A);
-		kernel_1.setArg(1, buffer_B);
-		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
+		//kernel_1.setArg(1, buffer_B);
+		
+		//kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
 
 		//call all kernels in a sequence
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size),NULL, &prof_event);
@@ -147,7 +154,7 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
-		std::cout << "A = " << A << std::endl;
+		std::cout << "A = " << A[0] << std::endl;
 		std::cout << "B = " << B[0] << std::endl;
 		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
 		std::cout << "Kernel execution time[ns]:"<< prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
