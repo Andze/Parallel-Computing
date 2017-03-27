@@ -71,7 +71,8 @@ int main(int argc, char **argv) {
 
 		//Read files
 
-		int const size = 1000;
+		int const size = 1873106;
+		//1873106
 		float* Temprature = read("../temp_lincolnshire.txt", size);
 
 
