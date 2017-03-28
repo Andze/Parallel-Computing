@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
 		//host - input
 		//convert into vector of ints
 		std::vector<mytype> A(size);
-		for (int i = 0; i < size; i++)
+		for (int i = 0;	 i < size; i++)
 		{
 			A[i] = Temprature[i];
 		}
@@ -166,6 +166,9 @@ int main(int argc, char **argv) {
 }
 
 /*
+	atomic floats:http://suhorukov.blogspot.co.uk/2011/12/opencl-11-atomic-operations-on-floating.html
+	
+
 	Times (NS)
 	
 	Min Global:	time[ns]:1417120
