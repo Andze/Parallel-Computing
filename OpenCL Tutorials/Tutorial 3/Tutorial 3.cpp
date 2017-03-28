@@ -68,9 +68,7 @@ int main(int argc, char **argv) {
 
 		cl::Program program(context, sources);
 
-
 		//Read files
-
 		int const size = 1873106;
 		//1873106
 		float* Temprature = read("../temp_lincolnshire.txt", size);
@@ -97,13 +95,13 @@ int main(int argc, char **argv) {
 
 		//Part 4 - memory allocation
 		//host - input
+		//convert into vector of ints
 		std::vector<mytype> A(size);
 		for (int i = 0; i < size; i++)
 		{
 			A[i] = Temprature[i];
 		}
 		//convert into vector of ints
-	
 		
 
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
@@ -143,10 +141,10 @@ int main(int argc, char **argv) {
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);//zero B buffer on device memory
 
 		//5.2 Setup and execute all kernels (i.e. device code)
-		cl::Kernel kernel_1 = cl::Kernel(program, "Maximum");
+		cl::Kernel kernel_1 = cl::Kernel(program, "Minimum_Local");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
-		//kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
+		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
 
 		//call all kernels in a sequence
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size),NULL, &prof_event);
@@ -170,8 +168,10 @@ int main(int argc, char **argv) {
 /*
 	Times (NS)
 	
-	Reduce 1:6944,6528,6752:	7 Executed
-	Reduce 2:8992,9472,9280:	8 Executed
-	Reduce 3:7040,6848,6784:	6 Executed
+	Min Global:	time[ns]:1417120
+	Min Local:  time[ns]:149792
+
+	Max Global:	time[ns]:1423040
+	Max Local:	time[ns]:9023168
 
 */

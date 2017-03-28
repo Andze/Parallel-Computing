@@ -1,4 +1,62 @@
-﻿//fixed 4 step reduce
+﻿///REDUCE METHOD
+__kernel void Maximum(__global int* A, __global int* B, __local int* scratch) 
+{
+	int id = get_global_id(0); 
+	int N = get_local_size(0);
+	int lid = get_local_id(0); 
+
+	scratch[lid] = A[id];
+
+	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+
+	for (int i = 1; i < N; i++ ) 
+	{
+		if(A[lid+i] > scratch[lid])
+			scratch[lid] = A[lid+i];
+	}
+	atomic_max(&B[0], scratch[lid]);
+}
+
+///REDUCE METHOD
+__kernel void Minimum_Global(__global int* A, __global int* B) 
+{
+	int id = get_global_id(0); 
+	int N = get_local_size(0);
+
+	B[id] = A[id];
+
+	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+
+	for (int i = 1; i < N; i++ ) 
+	{
+		if(A[id+i] < B[id])
+			B[id] = A[id+i];
+	}
+	atomic_min(&B[0], A[id]);
+}
+
+///REDUCE METHOD
+__kernel void Minimum_Local(__global int* A, __global int* B, __local int* scratch) 
+{
+	int id = get_global_id(0); 
+	int N = get_local_size(0);
+	int lid = get_local_id(0); 
+
+	scratch[lid] = A[id];
+
+	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+
+	for (int i = 1; i < N; i++ ) 
+	{
+		if(A[lid+i] > scratch[lid])
+			scratch[lid] = A[lid+i];
+	}
+
+	atomic_min(&B[0], scratch[lid]);
+}
+
+/*
+//fixed 4 step reduce
 __kernel void reduce_add_1(__global const int* A, __global int* B) {
 	int id = get_global_id(0);
 	int N = get_global_size(0);
@@ -159,43 +217,7 @@ __kernel void scan_add_adjust(__global int* A, __global const int* B) {
 
 
 
-///REDUCE METHOD
-__kernel void Maximum(__global int* A, __global int* B) 
-{
-	int id = get_global_id(0); 
-	int N = get_global_size(0);
 
-	B[id] = A[id];
-
-	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
-
-	for (int i = 1; i < N; i++ ) 
-	{
-		if(A[id+i] > B[id])
-			B[id] = A[id+i];
-	}
-	atomic_max(&B[0], A[id]);
-}
-
-///REDUCE METHOD
-__kernel void Minimum(__global int* A, __global int* B) 
-{
-	int id = get_global_id(0); 
-	int N = get_global_size(0);
-
-	B[id] = A[id];
-
-	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
-
-	for (int i = 1; i < N; i++ ) 
-	{
-		if(A[id+i] < B[id])
-			B[id] = A[id+i];
-	}
-	atomic_min(&B[0], A[id]);
-}
-
-/*
 void cmpxchg(__global int* A, __global int* B, bool dir) 
 {
 	if ((!dir && *A > *B) || (dir && *A < *B)) 	{
