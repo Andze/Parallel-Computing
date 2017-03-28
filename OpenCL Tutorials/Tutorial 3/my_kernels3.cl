@@ -44,12 +44,16 @@ __kernel void Minimum_Global(__global int* A, __global int* B)
 	B[id] = A[id];
 
 	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+	
 
+	//Quicker to not do this!
+	/*
 	for (int i = 1; i < N; i++ ) 
 	{
-		if(A[id+i] > B[id])
+		if(A[id+i] < B[id])
 			B[id] = A[id+i];
 	}
+	*/
 	atomic_min(&B[0], A[id]);
 }
 
@@ -59,18 +63,84 @@ __kernel void Minimum_Local(__global int* A, __global int* B, __local int* scrat
 	int id = get_global_id(0); 
 	int N = get_local_size(0);
 	int lid = get_local_id(0); 
+	int Gid = get_group_id(0);
 
-	scratch[lid] = A[id];
+	int I = Gid * (N) + lid;
+	
+	scratch[lid] = A[I];
 
 	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
-
-	for (int i = 1; i > N; i++ ) 
+	
+	//Quicker to not do this! for this size data set
+	for (int i = N/2; i > 32; i >>= 1) 
 	{
-		if(A[lid+i] > scratch[lid])
-			scratch[lid] = A[lid+i];
+		if(lid < i) 
+		{
+			if (scratch[lid] < scratch[lid + i])
+				scratch[lid] = scratch[lid+i];
+		}
+		barrier(CLK_LOCAL_MEM_FENCE);	
+	}
+	
+	if (!lid)
+	atomic_min(&B[0], scratch[lid]);
+}
+
+/*
+	Interleaved addressing
+	for (int i = 1; i < N; i *= 2) 
+	{
+		int index = 2 * i * lid;
+		if(index < N) 
+		{
+			if (scratch[lid] < scratch[lid + i])
+				scratch[lid] = scratch[lid+i];	
+		}
+		barrier(CLK_LOCAL_MEM_FENCE);
 	}
 
-	atomic_min(&B[0], scratch[lid]);
+	Sequential Addressing
+	for (int i = N/2; i > 0; i >>= 1) 
+	{
+		if(lid < i) 
+		{
+			if (scratch[lid] < scratch[lid + i])
+				scratch[lid] = scratch[lid+i];	
+		}
+		//time[ns]:221856
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+*/
+
+__kernel void reduce_add_4(__global const float* A, __global float* B, __local float* scratch, int size) {
+	int id = get_global_id(0);
+	int lid = get_local_id(0);
+	int N = get_local_size(0);
+
+	int Gid = get_group_id(0);
+	int I = Gid * (N*2) + lid;
+	int gridSize = N*2*get_num_groups(0);
+	scratch[lid] = 0;
+	while (I < size) {scratch[lid] = (A[I] + A[I+N]); I += gridSize;}
+
+	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+	
+	if (N >= 128) { if (lid <64) {scratch[lid] += scratch[lid + 64];}barrier(CLK_LOCAL_MEM_FENCE);} 
+
+	if (lid < 32)
+	{
+	if (N >= 64) scratch[lid] += scratch[lid+32];
+	if (N >= 32) scratch[lid] += scratch[lid+16];
+	if (N >= 16) scratch[lid] += scratch[lid+8];
+	if (N >= 8) scratch[lid] += scratch[lid+4];
+	if (N >= 4) scratch[lid] += scratch[lid+2];
+	if (N >= 2) scratch[lid] += scratch[lid+1];
+	}
+	
+	//we add results from all local groups to the first element of the array
+	//serial operation! but works for any group size
+	//copy the cache to output array
+	if (lid == 0) B[Gid] = scratch[0];
 }
 
 /*
@@ -262,7 +332,7 @@ void bitonic_merge(int id, __global int* A, int N, bool dir)
 __kernel void ParallelSelection(__global const int* A)
 {
   int id = get_global_id(0); // current thread
-  int N = get_global_size(0); // input size
+  int N = get_local_size(0); // input size
 
   for (int i = 1; i < N/2; i*=2)
   {
@@ -284,14 +354,18 @@ __kernel void ParallelSelection(__global const int* A)
 void OddEvenSort(__global int* A, __global int* B)
 {
 	if (*A > *B) 
-		int t = *A; *A = *B; *B = t;
+	{ 
+		int t = *A; 
+		*A = *B; 
+		*B = t;
+	}
 }
 
 __kernel void sort_oddeven(__global int* A, __global int* B) 
 {
 	int id = get_global_id(0); 
-	int N = get_global_size(0);
-	int lid = get_local_id(0);
+	int N = get_local_size(0);
+	//int lid = get_local_id(0);
 
 	//Scratch[lid] = A[id];
 
@@ -309,9 +383,8 @@ __kernel void sort_oddeven(__global int* A, __global int* B)
 	}
 	B[id] = A[id];
 }
+
 */
-
-
 
 
 

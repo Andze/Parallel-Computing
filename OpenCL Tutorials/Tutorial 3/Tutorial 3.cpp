@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
 			throw err;
 		}
 
-		typedef int mytype;
+		typedef float mytype;
 
 		//Part 4 - memory allocation
 		//host - input
@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
 		//if the total input length is divisible by the workgroup size
 		//this makes the code more efficient
-		size_t local_size = 32;
+		size_t local_size = 128;
 
 		size_t padding_size = A.size() % local_size;
 
@@ -141,10 +141,11 @@ int main(int argc, char **argv) {
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);//zero B buffer on device memory
 
 		//5.2 Setup and execute all kernels (i.e. device code)
-		cl::Kernel kernel_1 = cl::Kernel(program, "Minimum_Local");
+		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
 		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
+		kernel_1.setArg(3, size);
 
 		//call all kernels in a sequence
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size),NULL, &prof_event);
@@ -152,8 +153,15 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
+		int workgroupSize = A.size() / local_size;
+		float total = 0;
+		for (int i = 0; i <= workgroupSize; i++)
+		{
+			total += B[i];
+		}
+
 		//std::cout << "A = " << A << std::endl;
-		std::cout << "B = " << B[0] << std::endl;
+		std::cout << "B = " << total / size << std::endl;
 		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
 		std::cout << "Kernel execution time[ns]:"<< prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
 	}
@@ -171,10 +179,12 @@ int main(int argc, char **argv) {
 
 	Times (NS)
 	
-	Min Global:	time[ns]:1417120
-	Min Local:  time[ns]:149792
-
+	Min Global:	time[ns]:195808
+	Min Local:  time[ns]:145408
+ 					
 	Max Global:	time[ns]:1423040
 	Max Local:	time[ns]:9023168
+
+	Mean:		time[ns]:96640
 
 */
