@@ -12,6 +12,8 @@
 
 #include "Utils.h"
 
+#include <chrono>
+
 void print_help() {
 	std::cerr << "Application usage:" << std::endl;
 
@@ -153,12 +155,16 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
+		std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+
 		int workgroupSize = A.size() / local_size;
 		float total = 0;
 		for (int i = 0; i <= workgroupSize; i++)
 		{
 			total += B[i];
 		}
+
+		cout << "Add Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - now).count() << endl;
 
 		//std::cout << "A = " << A << std::endl;
 		std::cout << "B = " << total / size << std::endl;
@@ -186,5 +192,9 @@ int main(int argc, char **argv) {
 	Max Local:	time[ns]:9023168
 
 	Mean:		time[ns]:96640
+	time[ns]:125120
+	time[ns]:109120
+	time[ns]:128160
+	time[ns]:101984
 
 */

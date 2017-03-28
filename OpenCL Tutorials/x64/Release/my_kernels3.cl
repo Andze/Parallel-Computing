@@ -124,7 +124,7 @@ __kernel void reduce_add_4(__global const float* A, __global float* B, __local f
 	while (I < size) {scratch[lid] = (A[I] + A[I+N]); I += gridSize;}
 
 	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
-	
+	 
 	if (N >= 128) { if (lid <64) {scratch[lid] += scratch[lid + 64];}barrier(CLK_LOCAL_MEM_FENCE);} 
 
 	if (lid < 32)
