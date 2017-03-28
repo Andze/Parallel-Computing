@@ -101,9 +101,7 @@ C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xmemory0(737): wa
               _Iter=std::_Vector_iterator<std::_Vector_val<std::_Simple_types<int>>>
           ]
   Generating code
-  1 of 743 functions ( 0.1%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    0 functions had inline decision re-evaluated but remain unchanged
+  All 743 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
   Finished generating code
   Tutorial 3.vcxproj -> C:\Users\Computing\Documents\GitHub\Parallel-Computing\OpenCL Tutorials\x64\Release\Tutorial 3.exe
   Tutorial 3.vcxproj -> C:\Users\Computing\Documents\GitHub\Parallel-Computing\OpenCL Tutorials\x64\Release\Tutorial 3.pdb (Full PDB)

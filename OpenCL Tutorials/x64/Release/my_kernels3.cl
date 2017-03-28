@@ -112,19 +112,37 @@ __kernel void Minimum_Local(__global int* A, __global int* B, __local int* scrat
 	}
 */
 
+//Calculate Total
 __kernel void Addition(__global const float* A, __global float* B, __local float* scratch, int size) {
+
+	///Refrence: http://developer.download.nvidia.com/compute/cuda/1.1-Beta/x86_website/projects/reduction/doc/reduction.pdf
+
+	//Block size must always be of power of 2! and <= 128
+
 	int id = get_global_id(0);
 	int lid = get_local_id(0);
+	//get workgroup size
 	int N = get_local_size(0);
-
+	//get group index postion
 	int Gid = get_group_id(0);
+
+	//Halve the number of blocks and replace single load
 	int I = Gid * (N*2) + lid;
+
+	//Gridsize to control loop to maintain coalescing
 	int gridSize = N*2*get_num_groups(0);
+	 
 	scratch[lid] = 0;
+
+	//Mantains coalescing by keeping values close together in scratch using gridsize
+	//Fist Sequential reduction during read into local scratch to save time
 	while (I < size) {scratch[lid] = (A[I] + A[I+N]); I += gridSize;}
 
 	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
 	 
+	//cascading algorithm that does parrallel reduction on remaning workgroup items based on the workgroup size
+
+	//
 	if (N >= 128) { if (lid <64) {scratch[lid] += scratch[lid + 64];}barrier(CLK_LOCAL_MEM_FENCE);} 
 
 	if (lid < 32)
