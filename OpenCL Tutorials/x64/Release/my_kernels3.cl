@@ -112,7 +112,7 @@ __kernel void Minimum_Local(__global int* A, __global int* B, __local int* scrat
 	}
 */
 
-__kernel void reduce_add_4(__global const float* A, __global float* B, __local float* scratch, int size) {
+__kernel void Addition(__global const float* A, __global float* B, __local float* scratch, int size) {
 	int id = get_global_id(0);
 	int lid = get_local_id(0);
 	int N = get_local_size(0);

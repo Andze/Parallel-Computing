@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);//zero B buffer on device memory
 
 		//5.2 Setup and execute all kernels (i.e. device code)
-		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
+		cl::Kernel kernel_1 = cl::Kernel(program, "Addition");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
 		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
@@ -191,10 +191,8 @@ int main(int argc, char **argv) {
 	Max Global:	time[ns]:1423040
 	Max Local:	time[ns]:9023168
 
-	Mean:		time[ns]:96640
-	time[ns]:125120
-	time[ns]:109120
-	time[ns]:128160
-	time[ns]:101984
+	Addition:	time[ns]:96640
+	Mean:		time[ns]:17003
+	
 
 */
