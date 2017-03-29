@@ -115,12 +115,14 @@ int main(int argc, char **argv) {
 
 		//host - output
 		std::vector<mytype> Max(nr_groups);
+		std::vector<mytype> Dev(nr_groups);
 		std::vector<mytype> Min(nr_groups);
 		std::vector<mytype> Var(input_size);
 
 		//device - buffers
 		cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);
 		cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, output_size);
+		cl::Buffer buffer_Dev(context, CL_MEM_READ_WRITE, output_size);
 		cl::Buffer buffer_Max(context, CL_MEM_READ_WRITE, output_size);
 		cl::Buffer buffer_Min(context, CL_MEM_READ_WRITE, output_size);
 		cl::Buffer buffer_Var(context, CL_MEM_READ_WRITE, input_size);
@@ -203,16 +205,37 @@ int main(int argc, char **argv) {
 		cl::Kernel kernel_Var = cl::Kernel(program, "Variance");
 		kernel_Var.setArg(0, buffer_A);
 		kernel_Var.setArg(1, buffer_Var);
-		kernel_Var.setArg(2, total/size);
+		kernel_Var.setArg(2, total / size);
 
 		queue.enqueueNDRangeKernel(kernel_Var, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
 		queue.enqueueReadBuffer(buffer_Var, CL_TRUE, 0, input_size, &Var[0]);
 
-		std::cout << "\tVariance = " << Var[0] << std::endl;
+		std::cout << "\tVariance = Complete" << std::endl;
 		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
 		std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
 		cout << "--------------------------------------------------------------------------------" << endl;
 		
+		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &Var[0]);
+		queue.enqueueFillBuffer(buffer_Dev, 0, 0, output_size);
+
+		cl::Kernel kernel_Dev = cl::Kernel(program, "total_Add");
+		kernel_Dev.setArg(0, buffer_A);
+		kernel_Dev.setArg(1, buffer_Dev);
+		kernel_Dev.setArg(2, cl::Local(local_size * sizeof(mytype)));
+
+		queue.enqueueNDRangeKernel(kernel_Dev, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+		queue.enqueueReadBuffer(buffer_Dev, CL_TRUE, 0, output_size, &Dev[0]);
+
+		std::chrono::high_resolution_clock::time_point DevTime = std::chrono::high_resolution_clock::now();
+		mytype stdDev = 0; for (int i = 0; i <= nr_groups; i++) { stdDev += Dev[i]; }
+		cout << "\tHost Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - DevTime).count() << endl;
+		stdDev = sqrt(stdDev / size);
+		std::cout << "\tStandard Deviation = " << stdDev << std::endl;
+		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
+		std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+		cout << "--------------------------------------------------------------------------------" << endl;
 	}
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;

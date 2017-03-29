@@ -82,7 +82,7 @@ __kernel void Variance(__global const float* A, __global float* B, float mean) {
 	if (id < size)
 		B[id] = A[id] - mean;
 
-	B[id] = (B[id] * B[id]);
+	B[id] = B[id] * B[id];
 }
 ///Atomic Functions-------------------------------------------------------------------
 //Max Local
