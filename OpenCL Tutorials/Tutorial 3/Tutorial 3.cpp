@@ -176,6 +176,7 @@ int main(int argc, char **argv) {
 	Max Global:	time[ns]:1423040
 	Max Local:	time[ns]:9023168
 
+	mean on 1070: 66560ns
 	
 
 */
