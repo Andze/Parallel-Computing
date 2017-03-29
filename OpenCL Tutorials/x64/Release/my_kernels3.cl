@@ -1,9 +1,11 @@
 ﻿//Calculate Total 2 stage reduction
-__kernel void total_Add(__global const float* A, __global float* B, __local float* scratch, int size) {
+__kernel void total_Add(__global const float* A, __global float* B, __local float* scratch) {
 
 	///Refrence: http://developer.download.nvidia.com/compute/cuda/1.1-Beta/x86_website/projects/reduction/doc/reduction.pdf
 	//Block size must always be of power of 2! and <= 128
 	int id = get_global_id(0);
+	//Data size
+	int size = get_global_size(0);
 	int lid = get_local_id(0);
 	//get workgroup size
 	int N = get_local_size(0);
@@ -70,9 +72,21 @@ __kernel void total_Add(__global const float* A, __global float* B, __local floa
 	}
 */
 
+__kernel void Variance(__global const float* A, __global float* B, float mean) {
+
+	//Each Number subtracr the mean and square the result
+	//Take squared diffrence and run total add
+	int size = get_global_size(0);
+	int id = get_global_id(0);
+
+	if (id < size)
+		B[id] = A[id] - mean;
+
+	B[id] = (B[id] * B[id]);
+}
 ///Atomic Functions-------------------------------------------------------------------
 //Max Local
-__kernel void Maximum_Local(__global float* A, __global float* B, __local float* scratch, int size) 
+__kernel void Maximum_Local(__global float* A, __global float* B, __local float* scratch) 
 {
 	int id = get_global_id(0);
 	int lid = get_local_id(0);
@@ -80,6 +94,7 @@ __kernel void Maximum_Local(__global float* A, __global float* B, __local float*
 	int N = get_local_size(0);
 	//get group index postion
 	int Gid = get_group_id(0);
+	int size = get_global_size(0);
 
 	//Halve the number of blocks and replace single load
 	int I = Gid * (N*2) + lid;
@@ -128,12 +143,10 @@ __kernel void Maximum_Local(__global float* A, __global float* B, __local float*
 }
 
 //REDUCE METHOD
-__kernel void Minimum_Local(__global int* A, __global int* B, __local int* scratch, int size) 
+__kernel void Minimum_Local(__global int* A, __global int* B, __local int* scratch) 
 {
-	int id = get_global_id(0);
-	int lid = get_local_id(0);
-	int N = get_local_size(0);
-	int Gid = get_group_id(0);
+	int lid = get_local_id(0);	int N = get_local_size(0);
+	int Gid = get_group_id(0);	int size = get_global_size(0);
 
 	int I = Gid * (N*2) + lid;
 
@@ -181,6 +194,20 @@ __kernel void Minimum_Global(__global int* A, __global int* B)
 	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
 	
 	atomic_min(&B[0], A[id]);
+}
+
+//REDUCE METHOD
+__kernel void Atomic_Add(__global int* A, __global int* B, __local int* scratch) 
+{
+	int id = get_global_id(0); 
+	int N = get_local_size(0);
+	int lid = get_local_id(0);
+
+	scratch[lid] = A[id];
+
+	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+	
+	atomic_add(&B[0], scratch[lid]);
 }
 
 
