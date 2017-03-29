@@ -76,10 +76,14 @@ int main(int argc, char **argv) {
 		AddSources(sources, "my_kernels3.cl");
 		cl::Program program(context, sources);
 
+		std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
 		//Read files
 		int const size = 1873106;
 		//1873106
+		cout << "--------------------------------------------------------------------------------" << endl;
 		float* Temprature = read("../temp_lincolnshire.txt", size);
+		cout << "Read and Parse[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - now).count() << endl;
+		cout << "--------------------------------------------------------------------------------" << endl;
 
 		//build and debug the kernel code
 		try {
@@ -137,22 +141,32 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
-		std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
-
-		float total = 0;
-		for (int i = 0; i <= nr_groups; i++){total += B[i];	}
-		cout << "Add Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - now).count() << endl;
-
-		float Max = 0;
-		for (int i = 0; i <= nr_groups; i++) { if (Max > B[i]) Max = B[i]; }
-		float Min = 0;
-		for (int i = 0; i <= nr_groups; i++) { if (Max > B[i]) Max = B[i]; }
-
-		//std::cout << "A = " << A << std::endl;
+		std::chrono::high_resolution_clock::time_point Addtime = std::chrono::high_resolution_clock::now();
+		float total = 0; for (int i = 0; i <= nr_groups; i++) { total += B[i]; }
+		cout << "Host Add Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - Addtime).count() << endl;
 		std::cout << "Mean = " << total / size << std::endl;
-		//std::cout << "Max = " << Max << std::endl;
-		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_NS) << endl;
-		std::cout << "Kernel execution time[ns]:"<< prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
+		std::cout << "Kernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+		cout << "--------------------------------------------------------------------------------" << endl;
+		
+		/*
+		std::chrono::high_resolution_clock::time_point Maxtime = std::chrono::high_resolution_clock::now();
+		float Max = 0;for (int i = 0; i <= nr_groups; i++) { if (Max > B[i]) Max = B[i]; }
+		cout << "Host Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - Maxtime).count() << endl;
+		std::cout << "Max = " << Max << std::endl;
+		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
+		std::cout << "Kernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+		cout << "--------------------------------------------------------------------------------" << endl;
+
+
+		std::chrono::high_resolution_clock::time_point Mintime = std::chrono::high_resolution_clock::now();
+		cout << "Host Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - Mintime).count() << endl;
+		float Min = 0;for (int i = 0; i <= nr_groups; i++) { if (Max > B[i]) Max = B[i]; }
+		std::cout << "Min = " << Min << std::endl;
+		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
+		std::cout << "Kernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+		cout << "--------------------------------------------------------------------------------" << endl;
+		*/
 		
 		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	
