@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);//zero B buffer on device memory
 
 		//5.2 Setup and execute all kernels (i.e. device code)
-		cl::Kernel kernel_1 = cl::Kernel(program, "total_Add");
+		cl::Kernel kernel_1 = cl::Kernel(program, "Minimum_Local");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
 		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
@@ -141,14 +141,18 @@ int main(int argc, char **argv) {
 
 		float total = 0;
 		for (int i = 0; i <= nr_groups; i++){total += B[i];	}
+		float Max = 0;
+		for (int i = 0; i <= nr_groups; i++){ if(Max > B[i]) Max = B[i]; }
 
 		cout << "Add Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - now).count() << endl;
 
 		//std::cout << "A = " << A << std::endl;
-		std::cout << "Mean = " << total / size << std::endl;
-		//std::cout << "Max = " << B[0] << std::endl;
-		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
+		//std::cout << "Mean = " << total / size << std::endl;
+		std::cout << "Max = " << Max << std::endl;
+		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_NS) << endl;
 		std::cout << "Kernel execution time[ns]:"<< prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+		
+		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	
 	}
 	catch (cl::Error err) {

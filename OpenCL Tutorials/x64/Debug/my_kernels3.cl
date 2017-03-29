@@ -1,5 +1,5 @@
 ﻿//Calculate Total 2 stage reduction
-__kernel void Addition(__global const float* A, __global float* B, __local float* scratch, int size) {
+__kernel void total_Add(__global const float* A, __global float* B, __local float* scratch, int size) {
 
 	///Refrence: http://developer.download.nvidia.com/compute/cuda/1.1-Beta/x86_website/projects/reduction/doc/reduction.pdf
 	//Block size must always be of power of 2! and <= 128
@@ -42,9 +42,6 @@ __kernel void Addition(__global const float* A, __global float* B, __local float
 	
 	//copy the cache to output array for every workgroup total value
 	if (lid == 0) {B[Gid] = scratch[0];barrier(CLK_LOCAL_MEM_FENCE);}
-	
-	B[0] += B[Gid];
-	
 }
 
 /*
@@ -75,8 +72,49 @@ __kernel void Addition(__global const float* A, __global float* B, __local float
 
 ///Atomic Functions-------------------------------------------------------------------
 //Max Local
-__kernel void Maximum_Local(__global int* A, __global int* B, __local int* scratch) 
+__kernel void Maximum_Local(__global float* A, __global float* B, __local float* scratch, int size) 
 {
+	int id = get_global_id(0);
+	int lid = get_local_id(0);
+	//get workgroup size
+	int N = get_local_size(0);
+	//get group index postion
+	int Gid = get_group_id(0);
+
+	//Halve the number of blocks and replace single load
+	int I = Gid * (N*2) + lid;
+
+	//Gridsize to control loop to maintain coalescing
+	int gridSize = N*2*get_num_groups(0);
+	 
+	scratch[lid] = 0;
+
+	//Mantains coalescing by keeping values close together in scratch using gridsize
+	//Fist Sequential reduction during read into local scratch to save time
+	while (I < size) { if(A[I] > A[I+N]) scratch[lid] = A[I];	I += gridSize;	}
+
+	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+	 
+	//cascading algorithm that does parrallel reduction on remaning workgroup items based on the workgroup size
+	//unrolled all the previous loops!
+
+	//Checks based on Workgroup size and local Id 
+	if (N >= 128) { if (lid <64) {if(scratch[lid] < scratch[lid+64]) scratch[lid] = scratch[lid+64];}barrier(CLK_LOCAL_MEM_FENCE);} 
+
+	//This saves work on useless values and only executes if it needs to
+	if (lid < 32){
+	if (N >= 64) if(scratch[lid] < scratch[lid+32]) scratch[lid] = scratch[lid+32];
+	if (N >= 32) if(scratch[lid] < scratch[lid+16]) scratch[lid] = scratch[lid+16];
+	if (N >= 16) if(scratch[lid] < scratch[lid+8]) scratch[lid] = scratch[lid+8];
+	if (N >= 8) if(scratch[lid] < scratch[lid+4]) scratch[lid] = scratch[lid+4];
+	if (N >= 4) if(scratch[lid] < scratch[lid+2]) scratch[lid] = scratch[lid+2];
+	if (N >= 2) if(scratch[lid] < scratch[lid+1]) scratch[lid] = scratch[lid+1];
+	}
+	
+	//copy the cache to output array for every workgroup total value
+	if (lid == 0) {B[Gid] = scratch[0];barrier(CLK_LOCAL_MEM_FENCE);}
+
+	/*
 	int id = get_global_id(0); 
 	int N = get_local_size(0);
 	int lid = get_local_id(0); 
@@ -85,15 +123,29 @@ __kernel void Maximum_Local(__global int* A, __global int* B, __local int* scrat
 
 	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
 	
-	//Quicker to not do this!
-	/*
-	for (int i = 1; i < N; i++ ) 
+	for (int i = N/2; i > 0; i >>= 1) 
 	{
-		if(A[id+i] < B[id])	B[id] = A[id+i];
+		if(lid < i) 
+		{
+			if (scratch[lid] < scratch[lid + i])
+				scratch[lid] = scratch[lid+i];	
+		}
+		//time[ns]:221856
+		barrier(CLK_LOCAL_MEM_FENCE);
 	}
-	*/
 
-	atomic_max(&B[0], scratch[lid]);
+	//Quicker to not do this with ints
+	for (int i = 1; i < N; i *= 2) 
+	{
+		if (!(lid % (i * 2)) && ((lid + i) < N)) 
+			if(scratch[lid+i] > scratch[lid])	
+				scratch[lid] = scratch[lid+i];
+
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+	
+	atomic_max(&B[0], scratch[lid]*10);
+	*/
 }
 //Max_Global
 __kernel void Maximum_Global(__global int* A, __global int* B) 
@@ -121,7 +173,7 @@ __kernel void Minimum_Global(__global int* A, __global int* B)
 }
 
 //REDUCE METHOD
-__kernel void Minimum_Local(__global int* A, __global int* B, __local int* scratch, int size) 
+__kernel void Minimum_Local(__global int* A, __global int* B, __local int* scratch) 
 {
 	int id = get_global_id(0); 
 	int N = get_local_size(0);
@@ -130,8 +182,14 @@ __kernel void Minimum_Local(__global int* A, __global int* B, __local int* scrat
 	scratch[lid] = A[id];
 
 	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+
+	for (int i = 1; i < N; i++ ) 
+	{
+		if(scratch[lid+i] < scratch[lid])	
+			scratch[lid] = scratch[lid+i];
+	}
 		
-	atomic_min(&B[0], scratch[id]);
+	atomic_min(&B[0], scratch[lid]);
 }
 
 
