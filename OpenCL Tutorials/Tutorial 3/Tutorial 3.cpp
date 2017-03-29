@@ -21,16 +21,21 @@ void print_help() {
 	std::cerr << "  -l : list all platforms and devices" << std::endl;
 	std::cerr << "  -h : print this message" << std::endl;
 }
-
-float* read(const char* dir, int size)
+int lines = 0;
+float* read(const char* dir)
 {
-	float* tmp = new float[size];
-
 	FILE* stream = fopen(dir, "r");
+
+	while (EOF != (fscanf(stream,"%*[^\n]"), fscanf(stream,"%*c")))
+		++lines;
+
+	float* tmp = new float[lines];
+
 	fseek(stream, 0L, SEEK_SET);
-	
-	for (int i = 0; i < size; i++)
+	for (int i = 0; i < lines; i++)
+	{
 		fscanf(stream, "%*s %*lf %*lf %*lf %*lf %f", &tmp[i]);
+	}
 
 	fclose(stream);
 
@@ -71,12 +76,13 @@ int main(int argc, char **argv) {
 
 		std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
 		//Read files
-		int const size = 1873106;
+		
 		//1873106
 		cout << "--------------------------------------------------------------------------------" << endl;
-		float* Temprature = read("../temp_lincolnshire.txt", size);
+		float* Temprature = read("../temp_lincolnshire.txt");
 		cout << "\tRead and Parse[ms]: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - now).count() << endl;
 		cout << "--------------------------------------------------------------------------------" << endl;
+		int const size = lines;
 
 		//build and debug the kernel code
 		try {
@@ -148,7 +154,7 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &Mean[0]);
 
 		std::chrono::high_resolution_clock::time_point Addtime = std::chrono::high_resolution_clock::now();
-		mytype total = 0; for (int i = 0; i <= nr_groups; i++) { total += Mean[i]; }
+		mytype total = 0; for (int i = 0; i < nr_groups; i++) { total += Mean[i]; }
 		cout << "\tHost Add Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - Addtime).count() << endl;
 		std::cout << "\tMean = " << total / size << std::endl;
 		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
@@ -169,7 +175,7 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_Max, CL_TRUE, 0, output_size, &Max[0]);
 
 		std::chrono::high_resolution_clock::time_point Maxtime = std::chrono::high_resolution_clock::now();
-		mytype MaxValue = 0; for (int i = 0; i <= nr_groups; i++) { if (MaxValue < Max[i]) MaxValue = Max[i]; }
+		mytype MaxValue = 0; for (int i = 0; i < nr_groups; i++) { if (MaxValue < Max[i]) MaxValue = Max[i]; }
 		cout << "\tHost Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - Maxtime).count() << endl;
 		std::cout << "\tMax = " << MaxValue << std::endl;
 		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
@@ -190,7 +196,7 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_Min, CL_TRUE, 0, output_size, &Min[0]);
 	
 		std::chrono::high_resolution_clock::time_point Mintime = std::chrono::high_resolution_clock::now();
-		mytype MinValue = 0;for (int i = 0; i <= nr_groups; i++) { if (MinValue > Min[i]) MinValue = Min[i]; }
+		mytype MinValue = 0;for (int i = 0; i < nr_groups; i++) { if (MinValue > Min[i]) MinValue = Min[i]; }
 		cout << "\tHost Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - Mintime).count() << endl;
 		std::cout << "\tMin = " << MinValue << std::endl;
 		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
@@ -229,7 +235,7 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_Dev, CL_TRUE, 0, output_size, &Dev[0]);
 
 		std::chrono::high_resolution_clock::time_point DevTime = std::chrono::high_resolution_clock::now();
-		mytype stdDev = 0; for (int i = 0; i <= nr_groups; i++) { stdDev += Dev[i]; }
+		mytype stdDev = 0; for (int i = 0; i < nr_groups; i++) { stdDev += Dev[i]; }
 		cout << "\tHost Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - DevTime).count() << endl;
 		stdDev = sqrt(stdDev / size);
 		std::cout << "\tStandard Deviation = " << stdDev << std::endl;
