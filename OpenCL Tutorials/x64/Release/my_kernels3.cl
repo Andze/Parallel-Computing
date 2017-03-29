@@ -41,7 +41,7 @@ __kernel void total_Add(__global const float* A, __global float* B, __local floa
 	}
 	
 	//copy the cache to output array for every workgroup total value
-	if (lid == 0) {B[Gid] = scratch[0];barrier(CLK_LOCAL_MEM_FENCE);}
+	if (lid == 0) {B[Gid] = scratch[0];}
 }
 
 /*
