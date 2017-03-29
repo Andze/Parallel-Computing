@@ -11,7 +11,6 @@
 #endif
 
 #include "Utils.h"
-
 #include <chrono>
 
 void print_help() {
@@ -140,14 +139,14 @@ int main(int argc, char **argv) {
 
 		std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
 
-		int workgroupSize = A.size() / local_size;
 		float total = 0;
-		for (int i = 0; i <= workgroupSize; i++){total += B[i];	}
+		for (int i = 0; i <= nr_groups; i++){total += B[i];	}
 
 		cout << "Add Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - now).count() << endl;
 
 		//std::cout << "A = " << A << std::endl;
 		std::cout << "Mean = " << total / size << std::endl;
+		//std::cout << "Max = " << B[0] << std::endl;
 		std::cout << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
 		std::cout << "Kernel execution time[ns]:"<< prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
 	

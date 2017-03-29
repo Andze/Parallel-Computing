@@ -42,7 +42,6 @@ __kernel void total_Add(__global const float* A, __global float* B, __local floa
 	
 	//copy the cache to output array for every workgroup total value
 	if (lid == 0) {B[Gid] = scratch[0];barrier(CLK_LOCAL_MEM_FENCE);}
-	
 }
 
 /*
@@ -73,7 +72,7 @@ __kernel void total_Add(__global const float* A, __global float* B, __local floa
 
 ///Atomic Functions-------------------------------------------------------------------
 //Max Local
-__kernel void Maximum_Local(__global int* A, __global int* B, __local int* scratch) 
+__kernel void Maximum_Local(__global float* A, __global float* B, __local float* scratch) 
 {
 	int id = get_global_id(0); 
 	int N = get_local_size(0);
@@ -82,16 +81,30 @@ __kernel void Maximum_Local(__global int* A, __global int* B, __local int* scrat
 	scratch[lid] = A[id];
 
 	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
-	
-	//Quicker to not do this!
 	/*
+	for (int i = N/2; i > 0; i >>= 1) 
+	{
+		if(lid < i) 
+		{
+			if (scratch[lid] < scratch[lid + i])
+				scratch[lid] = scratch[lid+i];	
+		}
+		//time[ns]:221856
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}*/
+
+	//Quicker to not do this!
+	
 	for (int i = 1; i < N; i++ ) 
 	{
-		if(A[id+i] < B[id])	B[id] = A[id+i];
+		if(scratch[lid+i] < scratch[lid])	scratch[lid+i] = scratch[lid];
 	}
-	*/
-
-	atomic_max(&B[0], scratch[lid]);
+	
+	if(!lid) {
+		if (scratch[lid] < B[0])
+				B[0] = scratch[lid];	
+	}
+	//atomic_max(&B[0], scratch[lid]);
 }
 //Max_Global
 __kernel void Maximum_Global(__global int* A, __global int* B) 
