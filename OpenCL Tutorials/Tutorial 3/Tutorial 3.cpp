@@ -22,6 +22,7 @@ void print_help() {
 	std::cerr << "  -h : print this message" << std::endl;
 }
 int lines = 0;
+//FScanF Read in including a line check to dynamically size the vector
 float* read(const char* dir)
 {
 	FILE* stream = fopen(dir, "r");
@@ -30,10 +31,11 @@ float* read(const char* dir)
 		++lines;
 
 	float* tmp = new float[lines];
-
 	fseek(stream, 0L, SEEK_SET);
+
 	for (int i = 0; i < lines; i++)
 	{
+		//Ignore all data but Float data at the end of each line within the stream
 		fscanf(stream, "%*s %*lf %*lf %*lf %*lf %f", &tmp[i]);
 	}
 
@@ -42,6 +44,7 @@ float* read(const char* dir)
 	return tmp;
 }
 
+//pad arrays for the current worksize
 void PaddingFloat(std::vector<float> &A, int local_size)
 {
 	size_t padding_size = A.size() % local_size;
@@ -50,8 +53,10 @@ void PaddingFloat(std::vector<float> &A, int local_size)
 		A.insert(A.end(), A_ext.begin(), A_ext.end());
 	}
 }
+
 float total, MaxValue, MinValue, stdDev;
 
+//Function to execute kernals in a neater and smarter way re using the buffers and cleaner code structre
 void ExecuteKernal(
 	cl::CommandQueue queue,
 	cl::Buffer IN,
@@ -65,8 +70,7 @@ void ExecuteKernal(
 	size_t input_elements,
 	cl::Event prof_event,
 	int value
-)
-{
+){
 	int workgroups = (inVec.size() / local_size);
 
 	queue.enqueueWriteBuffer(IN, CL_TRUE, 0, input_size, &inVec[0]);
@@ -131,7 +135,7 @@ int main(int argc, char **argv) {
 		cl::Program program(context, sources);
 
 		std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
-		//Read files
+		//Read in large file and time how long it takes!
 		
 		//1873106
 		cout << "--------------------------------------------------------------------------------" << endl;
@@ -154,11 +158,13 @@ int main(int argc, char **argv) {
 
 		//create vector of floats from data
 		std::vector<mytype> A(size);
-		for (int i = 0;	 i < size; i++){A[i] = Temprature[i];}
+		for (int i = 0;	 i < size; i++)
+			{A[i] = Temprature[i];}
 
 		// Make the data set 5.2 BILLION
 		//A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());
 		
+		//Making data large for file size efficenty comparisons and to find optimal work group sizes
 
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
 		//if the total input length is divisible by the workgroup size
@@ -174,101 +180,100 @@ int main(int argc, char **argv) {
 		size_t output_size = Mean.size() * sizeof(mytype);//size in bytes
 
 		//host - output
-		std::vector<mytype> Max(nr_groups);
 		std::vector<mytype> Dev(nr_groups);
-		std::vector<mytype> Min(nr_groups);
 		std::vector<mytype> Var(input_size);
-		std::vector<mytype> Sort(input_size);
+		std::vector<mytype> Sort(input_elements);
 
 		//device - buffers
-		cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);
-		cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, output_size);
-		cl::Buffer buffer_Dev(context, CL_MEM_READ_WRITE, output_size);
-		cl::Buffer buffer_Max(context, CL_MEM_READ_WRITE, output_size);
-		cl::Buffer buffer_Min(context, CL_MEM_READ_WRITE, output_size);
-		cl::Buffer buffer_Var(context, CL_MEM_READ_WRITE, input_size);
+		cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);	cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, output_size);
+		cl::Buffer buffer_Dev(context, CL_MEM_READ_WRITE, output_size);	cl::Buffer buffer_Var(context, CL_MEM_READ_WRITE, input_size);
 		cl::Buffer buffer_Sort(context, CL_MEM_READ_WRITE, input_size);
 		
 		cl::Event prof_event;
 
 		//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-		cl::Kernel kernel_1 = cl::Kernel(program, "total_Add");
-		ExecuteKernal(queue, buffer_A, buffer_B, input_size, A, Mean, kernel_1, size,local_size,input_elements,prof_event,1);
-		
+		//Execute unwrapped ADD function and return time values in host code as much faster than recursion
+			cl::Kernel kernel_1 = cl::Kernel(program, "total_Add");
+			ExecuteKernal(queue, buffer_A, buffer_B, input_size, A, Mean, kernel_1, size,local_size,input_elements,prof_event,1);
 		//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-		
-		cl::Kernel kernel_Max = cl::Kernel(program, "Maximum_Local");
-		ExecuteKernal(queue, buffer_A, buffer_B, input_size, A, Mean, kernel_Max, size, local_size, input_elements, prof_event, 2);
-
+		//Execute unwrapped Max function and return time values in host code as much faster than recursion
+			cl::Kernel kernel_Max = cl::Kernel(program, "Maximum_Local");
+			ExecuteKernal(queue, buffer_A, buffer_B, input_size, A, Mean, kernel_Max, size, local_size, input_elements, prof_event, 2);
 		//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-		cl::Kernel kernel_Min = cl::Kernel(program, "Minimum_Local");
-		ExecuteKernal(queue, buffer_A, buffer_B, input_size, A, Mean, kernel_Min, size, local_size, input_elements, prof_event, 3);
-				
+		//Execute unwrapped Min function and return time values in host code as much faster than recursion
+			cl::Kernel kernel_Min = cl::Kernel(program, "Minimum_Local");
+			ExecuteKernal(queue, buffer_A, buffer_B, input_size, A, Mean, kernel_Min, size, local_size, input_elements, prof_event, 3);	
 		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-		
-		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
-		queue.enqueueFillBuffer(buffer_Var, 0, 0, output_size);
-
-		cl::Kernel kernel_Var = cl::Kernel(program, "Variance");
-		kernel_Var.setArg(0, buffer_A);
-		kernel_Var.setArg(1, buffer_Var);
-		kernel_Var.setArg(2, (total / size));
-
-		queue.enqueueNDRangeKernel(kernel_Var, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
-		queue.enqueueReadBuffer(buffer_Var, CL_TRUE, 0, input_size, &Var[0]);
-
-		std::cout << "\tVariance = Complete" << std::endl;
-		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
-		std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
-		cout << "--------------------------------------------------------------------------------" << endl;
-		
+		// Calculate Variance from intial input read!
+			queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
+			queue.enqueueFillBuffer(buffer_Var, 0, 0, output_size);
+		//Setting arguments
+			cl::Kernel kernel_Var = cl::Kernel(program, "Variance");
+			kernel_Var.setArg(0, buffer_A);
+			kernel_Var.setArg(1, buffer_Var);
+			kernel_Var.setArg(2, (total / size));
+		//Return values
+			queue.enqueueNDRangeKernel(kernel_Var, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+			queue.enqueueReadBuffer(buffer_Var, CL_TRUE, 0, input_size, &Var[0]);
+		//Print out timings for testing
+			std::cout << "\tVariance = Complete" << std::endl;
+			std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
+			std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+			cout << "--------------------------------------------------------------------------------" << endl;
 		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &Var[0]);
-		queue.enqueueFillBuffer(buffer_Dev, 0, 0, output_size);
-
-		cl::Kernel kernel_Dev = cl::Kernel(program, "total_Add");
-		kernel_Dev.setArg(0, buffer_A);
-		kernel_Dev.setArg(1, buffer_Dev);
-		kernel_Dev.setArg(2, cl::Local(local_size * sizeof(mytype)));
-
-		queue.enqueueNDRangeKernel(kernel_Dev, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
-		queue.enqueueReadBuffer(buffer_Dev, CL_TRUE, 0, output_size, &Dev[0]);
-
-		std::chrono::high_resolution_clock::time_point DevTime = std::chrono::high_resolution_clock::now();
-		mytype stdDev = 0; for (int i = 0; i < nr_groups/2; i++) { stdDev += Dev[i]; }
-		cout << "\tHost Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - DevTime).count() << endl;
-		stdDev = sqrt(stdDev / size);std::cout << "\tStandard Deviation = " << stdDev << std::endl;
-		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
-		std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
-		cout << "--------------------------------------------------------------------------------" << endl;
-
+		//Standard deviation Kernal
+			queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &Var[0]);
+			queue.enqueueFillBuffer(buffer_Dev, 0, 0, output_size);
+		//Setting arguments and passing in Variance from other kernal
+			cl::Kernel kernel_Dev = cl::Kernel(program, "total_Add");
+			kernel_Dev.setArg(0, buffer_A);
+			kernel_Dev.setArg(1, buffer_Dev);
+			kernel_Dev.setArg(2, cl::Local(local_size * sizeof(mytype)));
+		//Call back the summed data
+			queue.enqueueNDRangeKernel(kernel_Dev, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+			queue.enqueueReadBuffer(buffer_Dev, CL_TRUE, 0, output_size, &Dev[0]);
+		//Take results and calculate standard deviation in host code as calculations are less than 8k so 6000ns...
+			std::chrono::high_resolution_clock::time_point DevTime = std::chrono::high_resolution_clock::now();
+			mytype stdDev = 0;
+			for (int i = 0; i < nr_groups/2; i++) 
+				{ stdDev += Dev[i]; }
+			cout << "\tHost Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - DevTime).count() << endl;
+		//Print out standard deviation for viewing and print times to compared mem transfer and speed
+			stdDev = sqrt(stdDev / size);std::cout << "\tStandard Deviation = " << stdDev << std::endl;
+			std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
+			std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+			cout << "--------------------------------------------------------------------------------" << endl;
 		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-		cout << "----The Program is about to begin sorting Floating point values! and may freeze until completion----" << endl;
-		std::cout << "\t" << system("Pause");
-		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
-		queue.enqueueFillBuffer(buffer_Sort, 0, 0, output_size);
-
-		cl::Kernel kernel_Sort = cl::Kernel(program, "selection_sort");
-		kernel_Sort.setArg(0, buffer_A);
-		kernel_Sort.setArg(1, buffer_Sort);
-		kernel_Sort.setArg(2, cl::Local(local_size * sizeof(mytype)));
-
-		queue.enqueueNDRangeKernel(kernel_Sort, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
-		queue.enqueueReadBuffer(buffer_Sort, CL_TRUE, 0, output_size, &Sort[0]);
-
-		std::cout << "\tSorting Complete in Assending" << Sort[size-1] << std::endl;
-		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
-		std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
-		cout << "--------------------------------------------------------------------------------" << endl;
-
-		std::cout << "\tMedian: " << Sort[Sort.size()/2] <<std::endl;
-		std::cout << "\tLower: " << Sort[Sort.size() / 4] << std::endl;
-		std::cout << "\tUpper: " << Sort[(Sort.size()*3) / 4] << std::endl;
-		std::cout << "\tinterquartile Range: " << Sort[(Sort.size() * 3) / 4] - Sort[Sort.size() / 4] << std::endl;
-
-		cout << "--------------------------------------------------------------------------------" << endl;
+			cout << "----The Program is about to begin sorting Floating point values! and may freeze until completion----" << endl;
+			std::cout << "\t" << system("Pause");
+			cout << "--------------------------------------------------------------------------------" << endl;
+		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		//Sorting Kenrnal execute of selection sort on local using floats
+			size_t finput_size = A.size() * sizeof(float); // size in bytes of the data set (floats)
+			cl::Buffer buffer_FA(context, CL_MEM_READ_ONLY, input_size);
+			cl::Buffer buffer_FD(context, CL_MEM_READ_WRITE, input_size);
+		//queue write buffers for float values
+			queue.enqueueWriteBuffer(buffer_FA, CL_TRUE, 0, input_size, &A[0]);
+			queue.enqueueReadBuffer(buffer_FD, CL_TRUE, 0, input_size, &Sort[0]);
+		//Setting Kenral arguments
+			cl::Kernel kernel_sel_sort_float = cl::Kernel(program, "selection_sort_local_float");
+			kernel_sel_sort_float.setArg(0, buffer_FA);
+			kernel_sel_sort_float.setArg(1, buffer_FD);
+			kernel_sel_sort_float.setArg(2, cl::Local(local_size * sizeof(float)));
+		//Call back from queue
+			queue.enqueueNDRangeKernel(kernel_sel_sort_float, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+			queue.enqueueReadBuffer(buffer_FD, CL_TRUE, 0, input_size, &Sort[0]);
+		//Print results
+			std::cout << "\tSorting Complete in Assending" << std::endl;
+			std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
+			std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+			cout << "--------------------------------------------------------------------------------" << endl;
+		//Calculating and printing values from sorted vector
+			std::cout << "\tMedian: " << Sort[Sort.size()/2] <<std::endl;
+			std::cout << "\tLower: " << Sort[Sort.size() / 4] << std::endl;
+			std::cout << "\tUpper: " << Sort[(Sort.size()*3) / 4] << std::endl;
+			std::cout << "\tinterquartile Range: " << Sort[(Sort.size() * 3) / 4] - Sort[Sort.size() / 4] << std::endl;
+			cout << "--------------------------------------------------------------------------------" << endl;
 	}
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;

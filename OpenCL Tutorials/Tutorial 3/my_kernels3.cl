@@ -1,4 +1,4 @@
-﻿//Calculate Total 2 stage reduction
+﻿//Calculate Total using Unrolled Loops
 __kernel void total_Add(__global const float* A, __global float* B, __local float* scratch) {
 
 	///Refrence: http://developer.download.nvidia.com/compute/cuda/1.1-Beta/x86_website/projects/reduction/doc/reduction.pdf
@@ -72,6 +72,7 @@ __kernel void total_Add(__global const float* A, __global float* B, __local floa
 	}
 */
 
+//Simple kernal executing embarrassingly parrallel problem taking mean away and squaring to find variance
 __kernel void Variance(__global const float* A, __global float* B,float mean) {
 
 	//Each Number subtracr the mean and square the result
@@ -85,7 +86,7 @@ __kernel void Variance(__global const float* A, __global float* B,float mean) {
 	B[id] = B[id] * B[id];
 }
 ///Atomic Functions-------------------------------------------------------------------
-//Max Local
+//Max Local using the same unrolled loops that are optimised super efficently
 __kernel void Maximum_Local(__global float* A, __global float* B, __local float* scratch) 
 {
 	int id = get_global_id(0);
@@ -142,7 +143,7 @@ __kernel void Maximum_Local(__global float* A, __global float* B, __local float*
 	*/
 }
 
-//REDUCE METHOD
+//Same kenral just for Min values see above
 __kernel void Minimum_Local(__global int* A, __global int* B, __local int* scratch) 
 {
 	int lid = get_local_id(0);	int N = get_local_size(0);
@@ -171,7 +172,38 @@ __kernel void Minimum_Local(__global int* A, __global int* B, __local int* scrat
 	
 	if (lid == 0) {B[Gid] = scratch[lid];barrier(CLK_LOCAL_MEM_FENCE);}
 }
-//Max_Global
+
+// selection sort using Local memory VERY INNEFICENT! difficult sorting problems in 1.2 as recursion not supported in kernals
+__kernel void selection_sort_local_float(__global const float *A, __global float *B, __local float *scratch)
+{ 
+	int id = get_global_id(0);
+	int N = get_global_size(0);
+	int LN = get_local_size(0);
+	int gridSize = LN;
+	float Data = A[id];
+
+	int pos = 0;
+	for	(int j = 0; j < N; j+=gridSize)
+	{
+		barrier(CLK_LOCAL_MEM_FENCE);
+		for (int index = get_local_id(0); index<gridSize; index+=LN)
+		{ 
+			scratch[index] = A[j+index];
+		}
+		barrier(CLK_LOCAL_MEM_FENCE);
+
+		for	(int index = 0; index<gridSize; index++)
+		{ 
+			float jkey = scratch[index];
+			bool smaller = (jkey < Data) || (jkey == Data && (j+index) < id);
+			pos += (smaller)?1:0;
+		}	
+	}
+	B[pos] = Data;
+}
+
+//Very simple atomic min max and add functions! 
+//Super efficent and much faster than any non unrolled loop kernal code and quicker if using 5.2B data set
 __kernel void Maximum_Global_Int(__global int* A, __global int* B) 
 {
 	int id = get_global_id(0); 
@@ -209,37 +241,7 @@ __kernel void Atomic_Add(__global int* A, __global int* B, __local int* scratch)
 	atomic_add(&B[0], scratch[lid]);
 }
 
-// selection sort using Local memory
-__kernel void selection_sort(__global float *A, __global float * B,__local float* scratch)
-{
-	int id = get_global_id(0);
-	int N = get_global_size(0);
-	int LN = get_local_size(0);
-	int blocksize = LN;
-
-	float ikey = A[id];
-
-	int pos = 0;
-	for	(int j = 0; j < N; j+=blocksize)
-	{
-		barrier(CLK_LOCAL_MEM_FENCE);
-		for (int index = get_local_id(0); index<blocksize; index+=LN)
-		{ 
-			scratch[index] = A[j+index];
-		}
-		barrier(CLK_LOCAL_MEM_FENCE);
-
-		for	(int index = 0; index<blocksize; index++)
-		{ 
-			float jkey = scratch[index];
-			bool smaller = (jkey < ikey) || (jkey == ikey && (j+index) < id);
-			pos += (smaller)?1:0;
-		}	
-	}
-	B[pos] = ikey;
-}
-
-
+//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 /*
 //Tried and failed sorting
