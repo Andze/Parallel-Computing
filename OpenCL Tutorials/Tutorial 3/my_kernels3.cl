@@ -183,7 +183,7 @@ __kernel void Maximum_Global_Int(__global int* A, __global int* B)
 
 	atomic_max(&B[0], A[id]);
 }
-//REDUCE METHOD
+
 __kernel void Minimum_Global(__global int* A, __global int* B) 
 {
 	int id = get_global_id(0); 
@@ -191,12 +191,11 @@ __kernel void Minimum_Global(__global int* A, __global int* B)
 
 	B[id] = A[id];
 
-	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+	barrier(CLK_LOCAL_MEM_FENCE);
 	
 	atomic_min(&B[0], A[id]);
 }
 
-//REDUCE METHOD
 __kernel void Atomic_Add(__global int* A, __global int* B, __local int* scratch) 
 {
 	int id = get_global_id(0); 
@@ -205,11 +204,10 @@ __kernel void Atomic_Add(__global int* A, __global int* B, __local int* scratch)
 
 	scratch[lid] = A[id];
 
-	barrier(CLK_LOCAL_MEM_FENCE);//wait for all local threads to finish copying from global to local memory
+	barrier(CLK_LOCAL_MEM_FENCE);
 	
 	atomic_add(&B[0], scratch[lid]);
 }
-
 
 /*
 //Tried and failed sorting
@@ -291,7 +289,8 @@ __kernel void sort_oddeven(__global int* A, __global int* B)
 	B[id] = A[id];
 }
 
-
+	Tutorial Code 
+//--------------------------------------------------------------------------------------------------------------------------
 //fixed 4 step reduce
 __kernel void reduce_add_1(__global const int* A, __global int* B) {
 	int id = get_global_id(0);
