@@ -50,7 +50,63 @@ void PaddingFloat(std::vector<float> &A, int local_size)
 		A.insert(A.end(), A_ext.begin(), A_ext.end());
 	}
 }
+float total, MaxValue, MinValue, stdDev;
 
+void ExecuteKernal(
+	cl::CommandQueue queue,
+	cl::Buffer IN,
+	cl::Buffer Out,
+	size_t input_size,
+	std::vector<float> inVec,
+	std::vector<float> OutVec,
+	cl::Kernel kernel,
+	int size,
+	int local_size,
+	size_t input_elements,
+	cl::Event prof_event,
+	int value
+)
+{
+	int workgroups = (inVec.size() / local_size);
+
+	queue.enqueueWriteBuffer(IN, CL_TRUE, 0, input_size, &inVec[0]);
+	queue.enqueueFillBuffer(Out, 0, 0, OutVec.size());
+
+	kernel.setArg(0, IN);
+	kernel.setArg(1, Out);
+	kernel.setArg(2, cl::Local(local_size * sizeof(float)));
+
+	queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(inVec.size()), cl::NDRange(local_size), NULL, &prof_event);
+	
+	queue.enqueueReadBuffer(Out, CL_TRUE, 0, OutVec.size() * sizeof(float) , &OutVec[0]);
+
+	std::chrono::high_resolution_clock::time_point MeanTime, Maxtime, DevTime, Mintime;
+
+	switch(value)
+	{
+	case 1:
+		MeanTime = std::chrono::high_resolution_clock::now();
+		total = 0; for (int i = 0; i < workgroups /2 ; i++) { total += OutVec[i]; }
+		cout << "\tHost Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - MeanTime).count() << endl;
+		std::cout << "\tMean"<< " = " << total / size << std::endl;
+		break;
+	case 2:
+		Maxtime = std::chrono::high_resolution_clock::now();
+		MaxValue = 0; for (int i = 0; i < workgroups / 2; i++) { if (MaxValue < OutVec[i]) MaxValue = OutVec[i]; }
+		cout << "\tHost Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - Maxtime).count() << endl;
+		std::cout << "\tMax = " << MaxValue << std::endl;
+		break;
+	case 3:
+		Mintime = std::chrono::high_resolution_clock::now();
+		MinValue = 0; for (int i = 0; i < workgroups / 2; i++) { if (MinValue > OutVec[i]) MinValue = OutVec[i]; }
+		cout << "\tHost Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - Mintime).count() << endl;
+		std::cout << "\tMin = " << MinValue << std::endl;
+		break;
+	}
+	std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
+	std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+	cout << "--------------------------------------------------------------------------------" << endl;
+}
 
 int main(int argc, char **argv) {
 	//Part 1 - handle command line options such as device selection, verbosity, etc.
@@ -100,17 +156,15 @@ int main(int argc, char **argv) {
 		std::vector<mytype> A(size);
 		for (int i = 0;	 i < size; i++){A[i] = Temprature[i];}
 
-		/* Make the data set 5.2 BILLION
-		A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());
-		*/
+		// Make the data set 5.2 BILLION
+		//A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());A.insert(A.end(), A.begin(), A.end());
+		
 
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
 		//if the total input length is divisible by the workgroup size
 		//this makes the code more efficient
 		size_t local_size = 128;
-
-		PaddingFloat(A,local_size);
-
+		PaddingFloat(A, local_size);
 		size_t input_elements = A.size();//number of input elements
 		size_t input_size = A.size() * sizeof(mytype);//size in bytes
 		size_t nr_groups = input_elements / local_size;	
@@ -135,73 +189,19 @@ int main(int argc, char **argv) {
 		
 		cl::Event prof_event;
 
-		//Part 5 - device operations
 		//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-		//5.1 copy array A to and initialise other arrays on device memory
-		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
-		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);//zero B buffer on device memory
-
-		//5.2 Setup and execute all kernels (i.e. device code)
 		cl::Kernel kernel_1 = cl::Kernel(program, "total_Add");
-		kernel_1.setArg(0, buffer_A);
-		kernel_1.setArg(1, buffer_B);
-		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
-
-		//call all kernels in a sequence
-		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size),NULL, &prof_event);
-
-		//5.3 Copy the result from device to host
-		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &Mean[0]);
-
-		std::chrono::high_resolution_clock::time_point Addtime = std::chrono::high_resolution_clock::now();
-		mytype total = 0; for (int i = 0; i < nr_groups; i++) { total += Mean[i]; }
-		cout << "\tHost Add Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - Addtime).count() << endl;
-		std::cout << "\tMean = " << total / size << std::endl;
-		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
-		std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
-		cout << "--------------------------------------------------------------------------------" << endl;
-		
+		ExecuteKernal(queue, buffer_A, buffer_B, input_size, A, Mean, kernel_1, size,local_size,input_elements,prof_event,1);
 		
 		//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
-		queue.enqueueFillBuffer(buffer_Max, 0, 0, output_size);
-
+		
 		cl::Kernel kernel_Max = cl::Kernel(program, "Maximum_Local");
-		kernel_Max.setArg(0, buffer_A);
-		kernel_Max.setArg(1, buffer_Max);
-		kernel_Max.setArg(2, cl::Local(local_size * sizeof(mytype)));
-
-		queue.enqueueNDRangeKernel(kernel_Max, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
-		queue.enqueueReadBuffer(buffer_Max, CL_TRUE, 0, output_size, &Max[0]);
-
-		std::chrono::high_resolution_clock::time_point Maxtime = std::chrono::high_resolution_clock::now();
-		mytype MaxValue = 0; for (int i = 0; i < nr_groups; i++) { if (MaxValue < Max[i]) MaxValue = Max[i]; }
-		cout << "\tHost Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - Maxtime).count() << endl;
-		std::cout << "\tMax = " << MaxValue << std::endl;
-		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
-		std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
-		cout << "--------------------------------------------------------------------------------" << endl;
+		ExecuteKernal(queue, buffer_A, buffer_B, input_size, A, Mean, kernel_Max, size, local_size, input_elements, prof_event, 2);
 
 		//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-		
-		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
-		queue.enqueueFillBuffer(buffer_Min, 0, 0, output_size);
 
 		cl::Kernel kernel_Min = cl::Kernel(program, "Minimum_Local");
-		kernel_Min.setArg(0, buffer_A);
-		kernel_Min.setArg(1, buffer_Min);
-		kernel_Min.setArg(2, cl::Local(local_size * sizeof(mytype)));
-
-		queue.enqueueNDRangeKernel(kernel_Min, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
-		queue.enqueueReadBuffer(buffer_Min, CL_TRUE, 0, output_size, &Min[0]);
-	
-		std::chrono::high_resolution_clock::time_point Mintime = std::chrono::high_resolution_clock::now();
-		mytype MinValue = 0;for (int i = 0; i < nr_groups; i++) { if (MinValue > Min[i]) MinValue = Min[i]; }
-		cout << "\tHost Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - Mintime).count() << endl;
-		std::cout << "\tMin = " << MinValue << std::endl;
-		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
-		std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
-		cout << "--------------------------------------------------------------------------------" << endl;
+		ExecuteKernal(queue, buffer_A, buffer_B, input_size, A, Mean, kernel_Min, size, local_size, input_elements, prof_event, 3);
 				
 		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		
@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
 		cl::Kernel kernel_Var = cl::Kernel(program, "Variance");
 		kernel_Var.setArg(0, buffer_A);
 		kernel_Var.setArg(1, buffer_Var);
-		kernel_Var.setArg(2, total / size);
+		kernel_Var.setArg(2, (total / size));
 
 		queue.enqueueNDRangeKernel(kernel_Var, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
 		queue.enqueueReadBuffer(buffer_Var, CL_TRUE, 0, input_size, &Var[0]);
@@ -235,10 +235,9 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_Dev, CL_TRUE, 0, output_size, &Dev[0]);
 
 		std::chrono::high_resolution_clock::time_point DevTime = std::chrono::high_resolution_clock::now();
-		mytype stdDev = 0; for (int i = 0; i < nr_groups; i++) { stdDev += Dev[i]; }
+		mytype stdDev = 0; for (int i = 0; i < nr_groups/2; i++) { stdDev += Dev[i]; }
 		cout << "\tHost Time[ns]: " << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - DevTime).count() << endl;
-		stdDev = sqrt(stdDev / size);
-		std::cout << "\tStandard Deviation = " << stdDev << std::endl;
+		stdDev = sqrt(stdDev / size);std::cout << "\tStandard Deviation = " << stdDev << std::endl;
 		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
 		std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
 		cout << "--------------------------------------------------------------------------------" << endl;

@@ -72,7 +72,7 @@ __kernel void total_Add(__global const float* A, __global float* B, __local floa
 	}
 */
 
-__kernel void Variance(__global const float* A, __global float* B, float mean) {
+__kernel void Variance(__global const float* A, __global float* B,float mean) {
 
 	//Each Number subtracr the mean and square the result
 	//Take squared diffrence and run total add
