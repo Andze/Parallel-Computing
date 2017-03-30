@@ -178,6 +178,7 @@ int main(int argc, char **argv) {
 		std::vector<mytype> Dev(nr_groups);
 		std::vector<mytype> Min(nr_groups);
 		std::vector<mytype> Var(input_size);
+		std::vector<mytype> Sort(input_size);
 
 		//device - buffers
 		cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);
@@ -186,6 +187,7 @@ int main(int argc, char **argv) {
 		cl::Buffer buffer_Max(context, CL_MEM_READ_WRITE, output_size);
 		cl::Buffer buffer_Min(context, CL_MEM_READ_WRITE, output_size);
 		cl::Buffer buffer_Var(context, CL_MEM_READ_WRITE, input_size);
+		cl::Buffer buffer_Sort(context, CL_MEM_READ_WRITE, input_size);
 		
 		cl::Event prof_event;
 
@@ -241,12 +243,38 @@ int main(int argc, char **argv) {
 		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
 		std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
 		cout << "--------------------------------------------------------------------------------" << endl;
+
+		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		cout << "----The Program is about to begin sorting Floating point values! and may freeze until completion----" << endl;
+		std::cout << "\t" << system("Pause");
+		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
+		queue.enqueueFillBuffer(buffer_Sort, 0, 0, output_size);
+
+		cl::Kernel kernel_Sort = cl::Kernel(program, "selection_sort");
+		kernel_Sort.setArg(0, buffer_A);
+		kernel_Sort.setArg(1, buffer_Sort);
+		kernel_Sort.setArg(2, cl::Local(local_size * sizeof(mytype)));
+
+		queue.enqueueNDRangeKernel(kernel_Sort, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &prof_event);
+		queue.enqueueReadBuffer(buffer_Sort, CL_TRUE, 0, output_size, &Sort[0]);
+
+		std::cout << "\tSorting Complete in Assending" << Sort[size-1] << std::endl;
+		std::cout << "\t" << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << endl;
+		std::cout << "\tKernel execution time[ns]:" << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+		cout << "--------------------------------------------------------------------------------" << endl;
+
+		std::cout << "\tMedian: " << Sort[Sort.size()/2] <<std::endl;
+		std::cout << "\tLower: " << Sort[Sort.size() / 4] << std::endl;
+		std::cout << "\tUpper: " << Sort[(Sort.size()*3) / 4] << std::endl;
+		std::cout << "\tinterquartile Range: " << Sort[(Sort.size() * 3) / 4] - Sort[Sort.size() / 4] << std::endl;
+
+		cout << "--------------------------------------------------------------------------------" << endl;
 	}
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;
 	}
 
-	system("Pause");
+	std::cout << "\t" << system("Pause");
 	return 0;
 }
 
